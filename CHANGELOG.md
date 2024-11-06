@@ -11,6 +11,9 @@
 - Added comprehensive security headers for iframe embedding
 - Extended frame-ancestors directive to support major CMS platforms
 - Added X-Frame-Options with ALLOW-FROM for multiple platforms
+- Added unit tests for core components and utilities
+- Added test coverage reporting
+- Added Vitest UI for interactive testing
 
 ### Changed
 - Updated CSP headers to allow embedding from major CMS platforms
@@ -19,6 +22,8 @@
 - Added important flags to critical iframe styles
 - Improved mobile viewport handling
 - Updated security headers for broader platform compatibility
+- Enhanced test infrastructure with Jest DOM matchers
+- Improved test coverage for URL validation and components
 
 ### Security
 - Implemented proper Content Security Policy for iframes
