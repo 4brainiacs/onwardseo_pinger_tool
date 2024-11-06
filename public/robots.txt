@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://url-pinger.netlify.app/sitemap.xml
