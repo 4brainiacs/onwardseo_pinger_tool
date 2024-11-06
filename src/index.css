@@ -108,13 +108,51 @@
   background: #94a3b8;
 }
 
-/* Mobile optimizations */
-@media (max-width: 402px) {
+/* URL Pinger Tool - Responsive iframe styles */
+.url-pinger-iframe {
+  width: 100%;
+  max-width: 100vw;
+  border: none;
+  overflow: hidden;
+  min-height: 1800px !important;
+  transition: height 0.3s ease;
+  background-color: #FFFFFF;
+}
+
+/* Extra small devices (OnePlus 6T and similar) */
+@media screen and (max-width: 402px) {
+  .url-pinger-iframe {
+    height: 2400px !important;
+    min-height: 2400px !important;
+  }
+}
+
+/* Mobile viewport adjustments (smartphones) */
+@media screen and (min-width: 403px) and (max-width: 480px) {
+  .url-pinger-iframe {
+    height: 2200px !important;
+    min-height: 2200px !important;
+  }
+}
+
+/* Tablet viewport adjustments */
+@media screen and (min-width: 481px) and (max-width: 768px) {
   .url-pinger-iframe {
     height: 2000px !important;
     min-height: 2000px !important;
   }
-  
+}
+
+/* Desktop viewport adjustments */
+@media screen and (min-width: 769px) {
+  .url-pinger-iframe {
+    height: 1800px !important;
+    min-height: 1800px !important;
+  }
+}
+
+/* Mobile optimizations */
+@media (max-width: 402px) {
   .max-h-[300px] {
     max-height: 260px !important;
   }

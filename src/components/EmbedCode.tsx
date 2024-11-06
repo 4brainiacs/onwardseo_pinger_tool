@@ -3,18 +3,18 @@ import { Copy, Check } from 'lucide-react';
 
 export function EmbedCode() {
   const [copied, setCopied] = useState(false);
-  const [iframeHeight, setIframeHeight] = useState(1600);
+  const [iframeHeight, setIframeHeight] = useState(1800);
   
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth <= 402) { // OnePlus 6T and similar
-        setIframeHeight(2000);
+        setIframeHeight(2400);
       } else if (window.innerWidth <= 480) {
-        setIframeHeight(1800);
+        setIframeHeight(2200);
       } else if (window.innerWidth <= 768) {
-        setIframeHeight(1700);
+        setIframeHeight(2000);
       } else {
-        setIframeHeight(1600);
+        setIframeHeight(1800);
       }
     };
 
@@ -40,32 +40,32 @@ export function EmbedCode() {
     max-width: 100vw;
     border: none;
     overflow: hidden;
-    min-height: 1600px !important;
+    min-height: 1800px !important;
     transition: height 0.3s ease;
     background-color: #FFFFFF;
   }
   @media screen and (max-width: 402px) {
     .url-pinger-iframe {
-      height: 2000px !important;
-      min-height: 2000px !important;
+      height: 2400px !important;
+      min-height: 2400px !important;
     }
   }
   @media screen and (min-width: 403px) and (max-width: 480px) {
     .url-pinger-iframe {
-      height: 1800px !important;
-      min-height: 1800px !important;
+      height: 2200px !important;
+      min-height: 2200px !important;
     }
   }
   @media screen and (min-width: 481px) and (max-width: 768px) {
     .url-pinger-iframe {
-      height: 1700px !important;
-      min-height: 1700px !important;
+      height: 2000px !important;
+      min-height: 2000px !important;
     }
   }
   @media screen and (min-width: 769px) {
     .url-pinger-iframe {
-      height: 1600px !important;
-      min-height: 1600px !important;
+      height: 1800px !important;
+      min-height: 1800px !important;
     }
   }
 </style>`;
