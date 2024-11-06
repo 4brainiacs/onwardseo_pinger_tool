@@ -1,7 +1,11 @@
 import { APP_VERSION } from '../constants';
 
+export interface LogContext {
+  component?: string;
+  [key: string]: unknown;
+}
+
 type LogLevel = 'info' | 'warn' | 'error' | 'debug';
-type LogContext = Record<string, unknown>;
 
 interface LogEntry {
   timestamp: string;
@@ -80,8 +84,6 @@ class Logger {
     if (this.logQueue.length === 0) return;
 
     try {
-      // In production, you would send logs to your logging service
-      // For now, we'll just console.log them
       console.log('Flushing logs:', this.logQueue);
       this.logQueue = [];
     } catch (error) {

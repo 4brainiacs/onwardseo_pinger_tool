@@ -1,4 +1,4 @@
-import type { PingService, PingResponse } from '../types';
+import type { PingService, PingResult, PingResponse } from '../types/ping';
 import { normalizeUrl, validateUrl } from './urlUtils';
 import { logger } from './logger';
 import { AppError, ErrorSeverity } from './errorHandler';

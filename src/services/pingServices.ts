@@ -5,7 +5,6 @@ export const PING_SERVICES: PingService[] = [
   {
     name: 'Google Search',
     url: 'https://www.google.com/ping',
-    corsEnabled: true,
     method: 'GET',
     requiresProxy: false,
     proxyUrl: ''
@@ -13,7 +12,6 @@ export const PING_SERVICES: PingService[] = [
   {
     name: 'Bing Search',
     url: 'https://www.bing.com/ping',
-    corsEnabled: true,
     method: 'GET',
     requiresProxy: false,
     proxyUrl: ''
@@ -21,7 +19,6 @@ export const PING_SERVICES: PingService[] = [
   {
     name: 'Yandex Search',
     url: 'https://blogs.yandex.ru/ping',
-    corsEnabled: true,
     method: 'GET',
     requiresProxy: false,
     proxyUrl: ''
@@ -29,7 +26,6 @@ export const PING_SERVICES: PingService[] = [
   {
     name: 'DuckDuckGo',
     url: 'https://duckduckgo.com/ping',
-    corsEnabled: true,
     method: 'GET',
     requiresProxy: false,
     proxyUrl: ''
@@ -37,7 +33,6 @@ export const PING_SERVICES: PingService[] = [
   {
     name: 'Baidu Search',
     url: 'https://ping.baidu.com/ping',
-    corsEnabled: true,
     method: 'GET',
     requiresProxy: false,
     proxyUrl: ''
@@ -46,7 +41,6 @@ export const PING_SERVICES: PingService[] = [
   {
     name: 'WordPress',
     url: 'https://rpc.wordpress.com/ping',
-    corsEnabled: true,
     method: 'GET',
     requiresProxy: false,
     proxyUrl: ''
@@ -54,7 +48,6 @@ export const PING_SERVICES: PingService[] = [
   {
     name: 'Blogger',
     url: 'https://blogger.com/ping',
-    corsEnabled: true,
     method: 'GET',
     requiresProxy: false,
     proxyUrl: ''
@@ -62,7 +55,6 @@ export const PING_SERVICES: PingService[] = [
   {
     name: 'Medium',
     url: 'https://medium.com/ping',
-    corsEnabled: true,
     method: 'GET',
     requiresProxy: false,
     proxyUrl: ''
@@ -71,7 +63,6 @@ export const PING_SERVICES: PingService[] = [
   {
     name: 'Feedburner',
     url: 'https://feedburner.google.com/ping',
-    corsEnabled: true,
     method: 'GET',
     requiresProxy: false,
     proxyUrl: ''
@@ -79,7 +70,6 @@ export const PING_SERVICES: PingService[] = [
   {
     name: 'RSS Feed',
     url: 'https://rpc.rssfeeds.com/ping',
-    corsEnabled: true,
     method: 'GET',
     requiresProxy: false,
     proxyUrl: ''
@@ -88,7 +78,6 @@ export const PING_SERVICES: PingService[] = [
   {
     name: 'Pinterest',
     url: 'https://pinterest.com/ping',
-    corsEnabled: true,
     method: 'GET',
     requiresProxy: false,
     proxyUrl: ''
@@ -96,7 +85,6 @@ export const PING_SERVICES: PingService[] = [
   {
     name: 'LinkedIn',
     url: 'https://linkedin.com/ping',
-    corsEnabled: true,
     method: 'GET',
     requiresProxy: false,
     proxyUrl: ''
@@ -105,7 +93,6 @@ export const PING_SERVICES: PingService[] = [
   {
     name: 'Naver',
     url: 'https://search.naver.com/ping',
-    corsEnabled: true,
     method: 'GET',
     requiresProxy: false,
     proxyUrl: ''
@@ -113,7 +100,6 @@ export const PING_SERVICES: PingService[] = [
   {
     name: 'Yahoo Japan',
     url: 'https://search.yahoo.co.jp/ping',
-    corsEnabled: true,
     method: 'GET',
     requiresProxy: false,
     proxyUrl: ''
@@ -121,7 +107,6 @@ export const PING_SERVICES: PingService[] = [
   {
     name: 'Qwant',
     url: 'https://www.qwant.com/ping',
-    corsEnabled: true,
     method: 'GET',
     requiresProxy: false,
     proxyUrl: ''
@@ -130,7 +115,6 @@ export const PING_SERVICES: PingService[] = [
   {
     name: 'DMOZ',
     url: 'https://rpc.dmoz.org/ping',
-    corsEnabled: true,
     method: 'GET',
     requiresProxy: false,
     proxyUrl: ''
@@ -138,7 +122,6 @@ export const PING_SERVICES: PingService[] = [
   {
     name: 'Webmaster World',
     url: 'https://www.webmasterworld.com/ping',
-    corsEnabled: true,
     method: 'GET',
     requiresProxy: false,
     proxyUrl: ''
@@ -147,7 +130,6 @@ export const PING_SERVICES: PingService[] = [
   {
     name: 'Google News',
     url: 'https://news.google.com/ping',
-    corsEnabled: true,
     method: 'GET',
     requiresProxy: false,
     proxyUrl: ''
@@ -155,7 +137,6 @@ export const PING_SERVICES: PingService[] = [
   {
     name: 'Bing News',
     url: 'https://news.bing.com/ping',
-    corsEnabled: true,
     method: 'GET',
     requiresProxy: false,
     proxyUrl: ''
@@ -164,7 +145,6 @@ export const PING_SERVICES: PingService[] = [
   {
     name: 'Internet Archive',
     url: 'https://web.archive.org/ping',
-    corsEnabled: true,
     method: 'GET',
     requiresProxy: false,
     proxyUrl: ''

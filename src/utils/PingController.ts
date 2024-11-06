@@ -1,5 +1,5 @@
 import { PING_SERVICES } from '../services/pingServices';
-import type { PingResults, ProgressInfo } from '../types';
+import type { PingResults, ProgressInfo, PingResult } from '../types';
 import { pingService } from './pingChecker';
 import { handleError, logError } from './errorHandler';
 import { logger } from './logger';
@@ -164,13 +164,21 @@ export class PingController {
           if (!this.isStopped) {
             if (response === null || !response.success) {
               errors++;
-              results[url][index] = {
+              const result: PingResult = {
                 status: 'error',
                 timestamp: Date.now(),
                 url,
-                message: response?.message || 'Failed to ping service',
-                error: response?.error
+                message: response?.message || 'Failed to ping service'
               };
+              if (response?.error) {
+                result.error = {
+                  code: response.error.code,
+                  details: response.error.details,
+                  service: response.error.service,
+                  retryable: true
+                };
+              }
+              results[url][index] = result;
             } else {
               successes++;
               results[url][index] = {

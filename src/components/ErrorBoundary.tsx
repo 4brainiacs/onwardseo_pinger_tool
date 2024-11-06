@@ -1,4 +1,5 @@
-import React, { Component, ErrorInfo } from 'react';
+import React, { Component } from 'react';
+import type { ErrorInfo } from 'react';
 import { logger } from '../utils/logger';
 import { AppError, ErrorSeverity, handleError } from '../utils/errorHandler';
 import { FallbackError } from './FallbackError';

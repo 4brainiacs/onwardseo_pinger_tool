@@ -1,5 +1,5 @@
-import React, { useState, useCallback, ReactNode } from 'react';
-import { AppError, ErrorSeverity } from '../../types/errors';
+import { type ReactNode, useState, useCallback } from 'react';
+import type { AppError, ErrorSeverity } from '../../types/errors';
 import { handleError } from '../../utils/errorHandler';
 import { logger } from '../../utils/logger';
 import { ErrorContext } from './ErrorContext';
@@ -28,7 +28,7 @@ export function ErrorProvider({ children }: ErrorProviderProps) {
     error,
     setError,
     clearError,
-    severity: error?.severity || ErrorSeverity.MEDIUM
+    severity: error?.severity || 'medium' as ErrorSeverity
   };
 
   return (

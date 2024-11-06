@@ -11,10 +11,6 @@
 [[headers]]
   for = "/*"
   [headers.values]
-    X-Frame-Options = "SAMEORIGIN"
-    X-XSS-Protection = "1; mode=block"
-    X-Content-Type-Options = "nosniff"
-    Referrer-Policy = "strict-origin-when-cross-origin"
     Content-Security-Policy = """
       default-src 'self';
       connect-src 'self' https://*.pingomatic.com https://*.weblogs.com https://*.feedburner.com https://*.google.com https://*.bing.com https://*.yandex.ru https://*.moreover.com https://*.newsgator.com https://*.yahoo.com https://*.blogdigger.com https://*.technorati.com https://*.bloggers.jp https://*.fc2.com https://*.wordpress.com https://*.typepad.com;
@@ -22,8 +18,16 @@
       script-src 'self' 'unsafe-inline' 'unsafe-eval';
       style-src 'self' 'unsafe-inline';
       font-src 'self' data:;
-      frame-ancestors 'self';
+      frame-ancestors 'self' https://*.wordpress.com https://*.wp.com https://*.onwardseo.com https://*.blogspot.com https://*.wix.com https://*.squarespace.com https://*.medium.com https://*.webflow.com https://*.shopify.com https://*.myshopify.com https://*.weebly.com https://*.ghost.io https://*.hubspot.com https://*.typepad.com https://*.tumblr.com https://*.drupal.org https://*.joomla.org https://*.magento.com;
     """
+    X-Frame-Options = "ALLOW-FROM https://*.wordpress.com https://*.wp.com https://*.onwardseo.com https://*.blogspot.com https://*.wix.com https://*.squarespace.com https://*.medium.com https://*.webflow.com https://*.shopify.com https://*.myshopify.com https://*.weebly.com https://*.ghost.io https://*.hubspot.com https://*.typepad.com https://*.tumblr.com https://*.drupal.org https://*.joomla.org https://*.magento.com"
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, OPTIONS"
+    Access-Control-Allow-Headers = "X-Requested-With, content-type, Authorization"
+    Referrer-Policy = "no-referrer-when-downgrade"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
 
 [build.environment]
   NODE_VERSION = "20"

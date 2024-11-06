@@ -14,7 +14,7 @@ if (!container) {
 }
 
 try {
-  logger.info('Initializing application', 'AppInit');
+  logger.info('Initializing application', { component: 'AppInit' });
 
   const root = createRoot(container);
 
@@ -30,9 +30,12 @@ try {
     </React.StrictMode>
   );
 
-  logger.info('Application mounted successfully', 'AppInit');
+  logger.info('Application mounted successfully', { component: 'AppInit' });
 } catch (error) {
-  logger.error('Critical application failure', 'AppInit', error instanceof Error ? error : new Error(String(error)));
+  logger.error('Critical application failure', { 
+    component: 'AppInit',
+    error: error instanceof Error ? error : new Error(String(error))
+  });
   
   if (container) {
     container.innerHTML = `

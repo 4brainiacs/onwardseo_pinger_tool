@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { AppError, ErrorSeverity } from '../types/errors';
-import { useErrorContext } from '../context';
+import { useErrorContext } from '../context/ErrorContext';
 import { logger } from '../utils/logger';
 
 interface ErrorHandlerOptions {
