@@ -7,7 +7,7 @@ export function EmbedCode() {
   
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth <= 402) { // OnePlus 6T and similar
+      if (window.innerWidth <= 402) {
         setIframeHeight(2400);
       } else if (window.innerWidth <= 480) {
         setIframeHeight(2200);
@@ -24,46 +24,34 @@ export function EmbedCode() {
   }, []);
   
   const embedCode = `<iframe 
-  class="url-pinger-iframe"
-  src="${window.location.origin}" 
+  src="${window.location.origin}"
   title="URL Pinger Tool"
-  style="width: 100%; height: ${iframeHeight}px; border: none; max-width: 100vw; overflow: hidden; background-color: #FFFFFF;"
-  scrolling="no"
-  frameborder="0"
+  style="width: 100% !important; height: ${iframeHeight}px !important; border: none !important; max-width: 100vw !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; position: relative !important; display: block !important; background-color: #FFFFFF !important;"
   loading="lazy"
   allow="clipboard-write"
   importance="high"
 ></iframe>
 <style>
-  .url-pinger-iframe {
-    width: 100%;
-    max-width: 100vw;
-    border: none;
-    overflow: hidden;
-    min-height: 1800px !important;
-    transition: height 0.3s ease;
-    background-color: #FFFFFF;
-  }
   @media screen and (max-width: 402px) {
-    .url-pinger-iframe {
+    iframe[title="URL Pinger Tool"] {
       height: 2400px !important;
       min-height: 2400px !important;
     }
   }
   @media screen and (min-width: 403px) and (max-width: 480px) {
-    .url-pinger-iframe {
+    iframe[title="URL Pinger Tool"] {
       height: 2200px !important;
       min-height: 2200px !important;
     }
   }
   @media screen and (min-width: 481px) and (max-width: 768px) {
-    .url-pinger-iframe {
+    iframe[title="URL Pinger Tool"] {
       height: 2000px !important;
       min-height: 2000px !important;
     }
   }
   @media screen and (min-width: 769px) {
-    .url-pinger-iframe {
+    iframe[title="URL Pinger Tool"] {
       height: 1800px !important;
       min-height: 1800px !important;
     }

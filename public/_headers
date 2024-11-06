@@ -1,3 +1,5 @@
 /*
-  X-Frame-Options: ALLOW-FROM https://*.wordpress.com https://*.wp.com https://*.onwardseo.com https://*.blogspot.com https://*.wix.com https://*.squarespace.com https://*.medium.com https://*.webflow.com https://*.shopify.com https://*.myshopify.com https://*.weebly.com https://*.ghost.io https://*.hubspot.com https://*.typepad.com https://*.tumblr.com https://*.drupal.org https://*.joomla.org https://*.magento.com
-  Content-Security-Policy: frame-ancestors 'self' https://*.wordpress.com https://*.wp.com https://*.onwardseo.com https://*.blogspot.com https://*.wix.com https://*.squarespace.com https://*.medium.com https://*.webflow.com https://*.shopify.com https://*.myshopify.com https://*.weebly.com https://*.ghost.io https://*.hubspot.com https://*.typepad.com https://*.tumblr.com https://*.drupal.org https://*.joomla.org https://*.magento.com
+  X-Frame-Options: ALLOWALL
+  Content-Security-Policy: frame-ancestors *
+  Access-Control-Allow-Origin: *
+  Referrer-Policy: no-referrer-when-downgrade

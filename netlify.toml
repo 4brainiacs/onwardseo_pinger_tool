@@ -18,12 +18,12 @@
       script-src 'self' 'unsafe-inline' 'unsafe-eval';
       style-src 'self' 'unsafe-inline';
       font-src 'self' data:;
-      frame-ancestors 'self' https://*.wordpress.com https://*.wp.com https://*.onwardseo.com https://*.blogspot.com https://*.wix.com https://*.squarespace.com https://*.medium.com https://*.webflow.com https://*.shopify.com https://*.myshopify.com https://*.weebly.com https://*.ghost.io https://*.hubspot.com https://*.typepad.com https://*.tumblr.com https://*.drupal.org https://*.joomla.org https://*.magento.com;
+      frame-ancestors *;
     """
-    X-Frame-Options = "ALLOW-FROM https://*.wordpress.com https://*.wp.com https://*.onwardseo.com https://*.blogspot.com https://*.wix.com https://*.squarespace.com https://*.medium.com https://*.webflow.com https://*.shopify.com https://*.myshopify.com https://*.weebly.com https://*.ghost.io https://*.hubspot.com https://*.typepad.com https://*.tumblr.com https://*.drupal.org https://*.joomla.org https://*.magento.com"
     Access-Control-Allow-Origin = "*"
     Access-Control-Allow-Methods = "GET, POST, OPTIONS"
     Access-Control-Allow-Headers = "X-Requested-With, content-type, Authorization"
+    X-Frame-Options = "ALLOWALL"
     Referrer-Policy = "no-referrer-when-downgrade"
     Permissions-Policy = "geolocation=(), microphone=(), camera=()"
     X-Content-Type-Options = "nosniff"
