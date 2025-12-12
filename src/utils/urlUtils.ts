@@ -89,27 +89,46 @@ export function validateUrl(url: string): URLValidationResult {
 export function normalizeUrl(url: string): string {
   try {
     let normalizedUrl = url.trim().toLowerCase();
-    
+
+    // Empty URL is invalid
+    if (!normalizedUrl) {
+      throw new Error('URL cannot be empty');
+    }
+
     if (!normalizedUrl.match(/^[a-z]+:\/\//)) {
       normalizedUrl = 'https://' + normalizedUrl;
     }
-    
+
     const urlObject = new URL(normalizedUrl);
-    
+
+    // Validate that hostname has at least one dot (valid domain)
+    // This catches cases like 'not-a-url' which URL constructor accepts
+    const hostname = urlObject.hostname;
+    if (!hostname.includes('.') || hostname.split('.').some(part => part.length === 0)) {
+      throw new Error('Invalid domain format');
+    }
+
+    // Validate TLD exists and has at least 2 chars
+    const parts = hostname.split('.');
+    const tld = parts[parts.length - 1];
+    if (!tld || tld.length < 2) {
+      throw new Error('Invalid top-level domain');
+    }
+
     // Clean up hostname
-    let hostname = urlObject.hostname
+    let cleanHostname = hostname
       .replace(/^www\./, '')
       .replace(/\.+/g, '.')
       .replace(/\.$/, '');
-    
-    urlObject.hostname = hostname;
-    
+
+    urlObject.hostname = cleanHostname;
+
     // Remove default ports
     if ((urlObject.protocol === 'http:' && urlObject.port === '80') ||
         (urlObject.protocol === 'https:' && urlObject.port === '443')) {
       urlObject.port = '';
     }
-    
+
     // Remove trailing slashes
     let finalUrl = urlObject.toString();
     return finalUrl.replace(/\/+$/, '');

@@ -24,7 +24,7 @@ export function URLInput({ onSubmit, onReset, isLoading, isCompleted }: URLInput
       return null;
     }
 
-    const invalidUrls = urls.filter(url => !validateUrl(url));
+    const invalidUrls = urls.filter(url => !validateUrl(url).isValid);
     
     if (invalidUrls.length > 0) {
       setError(`Invalid URL${invalidUrls.length > 1 ? 's' : ''}: ${invalidUrls.join(', ')}`);
@@ -46,9 +46,8 @@ export function URLInput({ onSubmit, onReset, isLoading, isCompleted }: URLInput
 
   const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
-    if (error) {
-      validateUrls(e.target.value);
-    }
+    // Always validate to show real-time feedback for URL count/validity
+    validateUrls(e.target.value);
   };
 
   const handleReset = () => {
