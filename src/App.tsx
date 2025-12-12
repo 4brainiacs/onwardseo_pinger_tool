@@ -11,6 +11,7 @@ import { useErrorState } from './hooks/useErrorState';
 import { useAsyncOperation } from './hooks/useAsyncOperation';
 import { AppError } from './utils/errorHandler';
 import { logger } from './utils/logger';
+import { triggerHeightRecalc } from './utils/iframeHeight';
 import type { PingResults, ProgressInfo, CategoryType } from './types';
 
 function App() {
@@ -74,6 +75,10 @@ function App() {
       });
     } finally {
       setIsLoading(false);
+
+      // Trigger iframe height recalculation after completion
+      // (ProgressBar disappears, so height should shrink)
+      triggerHeightRecalc();
     }
   };
 
@@ -118,6 +123,9 @@ function App() {
       pingControllerRef.current.reset();
     }
     pingControllerRef.current = null;
+
+    // Trigger iframe height recalculation after DOM updates
+    triggerHeightRecalc();
   };
 
   const handleRetry = async () => {

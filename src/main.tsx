@@ -4,6 +4,7 @@ import { ErrorProvider } from './context';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { LoadingFallback } from './components/LoadingFallback';
 import { logger } from './utils/logger';
+import { getRecalcEventName } from './utils/iframeHeight';
 import App from './App';
 import './index.css';
 
@@ -21,8 +22,9 @@ const initIframeHeightCommunication = () => {
   const THROTTLE_DELAY = 250;
   const MIN_HEIGHT_CHANGE = 10;
 
-  const sendHeightToParent = () => {
-    if (isThrottled) return;
+  const sendHeightToParent = (force: boolean = false) => {
+    // Skip throttle check if forced
+    if (!force && isThrottled) return;
 
     const root = document.getElementById('root');
     if (!root) return;
@@ -30,8 +32,8 @@ const initIframeHeightCommunication = () => {
     // Get the actual rendered height of content
     const contentHeight = root.scrollHeight;
 
-    // Only send if height changed meaningfully
-    if (Math.abs(contentHeight - lastSentHeight) < MIN_HEIGHT_CHANGE) {
+    // Skip min change check if forced (allows shrinking)
+    if (!force && Math.abs(contentHeight - lastSentHeight) < MIN_HEIGHT_CHANGE) {
       return;
     }
 
@@ -47,12 +49,25 @@ const initIframeHeightCommunication = () => {
       '*'
     );
 
-    // Throttle to prevent rapid firing
-    isThrottled = true;
-    setTimeout(() => {
-      isThrottled = false;
-    }, THROTTLE_DELAY);
+    // Throttle to prevent rapid firing (skip if forced)
+    if (!force) {
+      isThrottled = true;
+      setTimeout(() => {
+        isThrottled = false;
+      }, THROTTLE_DELAY);
+    }
   };
+
+  // Force recalculation - bypasses all checks, used for reset/completion
+  const forceHeightRecalc = () => {
+    // Reset lastSentHeight to ensure the new height is sent
+    lastSentHeight = 0;
+    isThrottled = false;
+    sendHeightToParent(true);
+  };
+
+  // Listen for manual recalc events (from reset, completion, etc.)
+  window.addEventListener(getRecalcEventName(), forceHeightRecalc);
 
   // Use ResizeObserver - only on root element
   if (typeof ResizeObserver !== 'undefined') {
@@ -82,7 +97,7 @@ const initIframeHeightCommunication = () => {
   setTimeout(sendHeightToParent, 3000);
 
   // Also send on window resize
-  window.addEventListener('resize', sendHeightToParent);
+  window.addEventListener('resize', () => sendHeightToParent());
 
   logger.info('Iframe height communication initialized', { component: 'IframeResize' });
 };
