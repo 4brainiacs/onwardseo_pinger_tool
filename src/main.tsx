@@ -11,94 +11,88 @@ import './index.css';
 // IFRAME DYNAMIC HEIGHT COMMUNICATION
 // ============================================
 const initIframeHeightCommunication = () => {
-  let lastHeight = 0;
-  const DEBOUNCE_DELAY = 100;
-  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  // Only run if inside an iframe
+  if (window.parent === window) {
+    return;
+  }
+
+  let lastSentHeight = 0;
+  let isThrottled = false;
+  const THROTTLE_DELAY = 250;
+  const MIN_HEIGHT_CHANGE = 10;
 
   const sendHeightToParent = () => {
-    // Clear any pending debounce
-    if (debounceTimer) {
-      clearTimeout(debounceTimer);
+    if (isThrottled) return;
+
+    const root = document.getElementById('root');
+    if (!root) return;
+
+    // Get the actual rendered height of content
+    const contentHeight = root.scrollHeight;
+
+    // Only send if height changed meaningfully
+    if (Math.abs(contentHeight - lastSentHeight) < MIN_HEIGHT_CHANGE) {
+      return;
     }
 
-    debounceTimer = setTimeout(() => {
-      const root = document.getElementById('root');
-      if (!root) return;
+    lastSentHeight = contentHeight;
 
-      // Calculate the actual content height
-      const height = Math.max(
-        root.scrollHeight,
-        root.offsetHeight,
-        document.body.scrollHeight,
-        document.body.offsetHeight
-      );
+    // Send height to parent window
+    window.parent.postMessage(
+      {
+        type: 'pinger-resize',
+        height: contentHeight,
+        source: 'onwardseo-pinger'
+      },
+      '*'
+    );
 
-      // Add small padding to prevent scrollbar flicker
-      const finalHeight = height + 20;
-
-      // Only send if height changed significantly (more than 5px)
-      if (Math.abs(finalHeight - lastHeight) > 5) {
-        lastHeight = finalHeight;
-
-        // Send height to parent window
-        if (window.parent !== window) {
-          window.parent.postMessage(
-            {
-              type: 'pinger-resize',
-              height: finalHeight,
-              source: 'onwardseo-pinger'
-            },
-            '*'
-          );
-        }
-      }
-    }, DEBOUNCE_DELAY);
+    // Throttle to prevent rapid firing
+    isThrottled = true;
+    setTimeout(() => {
+      isThrottled = false;
+    }, THROTTLE_DELAY);
   };
 
-  // Use ResizeObserver for efficient size tracking
+  // Use ResizeObserver - only on root element
   if (typeof ResizeObserver !== 'undefined') {
-    const resizeObserver = new ResizeObserver(() => {
+    const observer = new ResizeObserver(() => {
       sendHeightToParent();
     });
 
-    // Observe the root element
-    const root = document.getElementById('root');
-    if (root) {
-      resizeObserver.observe(root);
-    }
+    // Wait for root to be available, then observe
+    const startObserving = () => {
+      const root = document.getElementById('root');
+      if (root) {
+        observer.observe(root);
+      }
+    };
 
-    // Also observe body for any changes
-    resizeObserver.observe(document.body);
+    // Start observing after DOM is ready
+    if (document.readyState === 'complete') {
+      startObserving();
+    } else {
+      window.addEventListener('load', startObserving);
+    }
   }
 
-  // Use MutationObserver for DOM changes
-  const mutationObserver = new MutationObserver(() => {
-    sendHeightToParent();
-  });
-
-  mutationObserver.observe(document.body, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-    characterData: true
-  });
-
-  // Send initial height after a short delay to ensure content is rendered
-  setTimeout(sendHeightToParent, 100);
+  // Send height after initial render and after content settles
   setTimeout(sendHeightToParent, 500);
-  setTimeout(sendHeightToParent, 1000);
+  setTimeout(sendHeightToParent, 1500);
+  setTimeout(sendHeightToParent, 3000);
 
   // Also send on window resize
   window.addEventListener('resize', sendHeightToParent);
 
-  // Send on scroll (in case content loads lazily)
-  window.addEventListener('scroll', sendHeightToParent, { passive: true });
-
   logger.info('Iframe height communication initialized', { component: 'IframeResize' });
 };
 
-// Initialize iframe communication
-initIframeHeightCommunication();
+// Initialize iframe communication after DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initIframeHeightCommunication);
+} else {
+  initIframeHeightCommunication();
+}
 
 const container = document.getElementById('root');
 
