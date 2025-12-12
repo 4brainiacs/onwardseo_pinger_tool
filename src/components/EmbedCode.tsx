@@ -1,62 +1,32 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Copy, Check } from 'lucide-react';
 
 export function EmbedCode() {
   const [copied, setCopied] = useState(false);
-  const [iframeHeight, setIframeHeight] = useState(1800);
-  
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth <= 402) {
-        setIframeHeight(2400);
-      } else if (window.innerWidth <= 480) {
-        setIframeHeight(2200);
-      } else if (window.innerWidth <= 768) {
-        setIframeHeight(2000);
-      } else {
-        setIframeHeight(1800);
-      }
-    };
 
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-  
-  const embedCode = `<iframe 
+  const embedCode = `<!-- OnwardSEO URL Pinger Tool - Dynamic Height Embed -->
+<iframe
+  id="onwardseo-pinger"
   src="${window.location.origin}"
   title="URL Pinger Tool"
-  style="width: 100% !important; height: ${iframeHeight}px !important; border: none !important; max-width: 100vw !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; position: relative !important; display: block !important; background-color: #FFFFFF !important;"
+  style="width: 100%; min-height: 500px; border: none; overflow: hidden; display: block; background-color: #FFFFFF;"
+  scrolling="no"
+  frameborder="0"
   loading="lazy"
   allow="clipboard-write"
-  importance="high"
 ></iframe>
-<style>
-  @media screen and (max-width: 402px) {
-    iframe[title="URL Pinger Tool"] {
-      height: 2400px !important;
-      min-height: 2400px !important;
+<script>
+(function() {
+  window.addEventListener('message', function(e) {
+    if (e.data && e.data.type === 'pinger-resize' && e.data.source === 'onwardseo-pinger') {
+      var iframe = document.getElementById('onwardseo-pinger');
+      if (iframe && e.data.height) {
+        iframe.style.height = e.data.height + 'px';
+      }
     }
-  }
-  @media screen and (min-width: 403px) and (max-width: 480px) {
-    iframe[title="URL Pinger Tool"] {
-      height: 2200px !important;
-      min-height: 2200px !important;
-    }
-  }
-  @media screen and (min-width: 481px) and (max-width: 768px) {
-    iframe[title="URL Pinger Tool"] {
-      height: 2000px !important;
-      min-height: 2000px !important;
-    }
-  }
-  @media screen and (min-width: 769px) {
-    iframe[title="URL Pinger Tool"] {
-      height: 1800px !important;
-      min-height: 1800px !important;
-    }
-  }
-</style>`;
+  });
+})();
+</script>`;
 
   const handleCopy = async () => {
     try {
