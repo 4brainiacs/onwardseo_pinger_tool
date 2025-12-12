@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { AppError, ErrorSeverity, handleError } from '../utils/errorHandler';
+import { AppError, ErrorSeverity } from '../utils/errorHandler';
 import { logger } from '../utils/logger';
 
 interface AsyncErrorOptions {

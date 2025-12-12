@@ -1,4 +1,4 @@
-import { type ReactNode, createContext } from 'react';
+import { createContext } from 'react';
 import type { AppError, ErrorSeverity } from '../../types/errors';
 
 export interface ErrorContextValue {

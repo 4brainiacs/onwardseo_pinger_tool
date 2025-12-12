@@ -1,6 +1,5 @@
 import { logger } from './logger';
 
-const URL_REGEX = /^(https?:\/\/)?([a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}(\/\S*)?$/;
 const MAX_URL_LENGTH = 2048;
 const RESTRICTED_CHARS = /[<>"{}|\\^`]/;
 const VALID_PROTOCOLS = ['http:', 'https:'];
@@ -116,7 +115,7 @@ export function normalizeUrl(url: string): string {
     }
 
     // Clean up hostname
-    let cleanHostname = hostname
+    const cleanHostname = hostname
       .replace(/^www\./, '')
       .replace(/\.+/g, '.')
       .replace(/\.$/, '');
@@ -130,7 +129,7 @@ export function normalizeUrl(url: string): string {
     }
 
     // Remove trailing slashes
-    let finalUrl = urlObject.toString();
+    const finalUrl = urlObject.toString();
     return finalUrl.replace(/\/+$/, '');
   } catch (error) {
     throw new Error(`Invalid URL format: ${error instanceof Error ? error.message : String(error)}`);
