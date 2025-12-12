@@ -22,7 +22,7 @@ const initIframeHeightCommunication = () => {
   const THROTTLE_DELAY = 250;
   const MIN_HEIGHT_CHANGE = 10;
 
-  // Get actual content height using multiple methods for accuracy
+  // Get actual content height by measuring real content bounds
   const getContentHeight = (): number => {
     const root = document.getElementById('root');
     if (!root) return 0;
@@ -30,33 +30,45 @@ const initIframeHeightCommunication = () => {
     // Force layout recalculation
     void root.offsetHeight;
 
-    // Get height using multiple approaches
-    const scrollHeight = root.scrollHeight;
-    const boundingHeight = root.getBoundingClientRect().height;
+    // Method 1: Get the bounding rect of the root's first child (the actual app container)
+    const firstChild = root.firstElementChild as HTMLElement;
+    if (firstChild) {
+      const childRect = firstChild.getBoundingClientRect();
+      const childHeight = childRect.height;
 
-    // Get actual content by summing children heights
-    let childrenHeight = 0;
-    for (const child of Array.from(root.children)) {
-      const rect = (child as HTMLElement).getBoundingClientRect();
-      childrenHeight = Math.max(childrenHeight, rect.bottom);
-    }
+      // Also check offsetHeight which ignores transforms
+      const offsetHeight = firstChild.offsetHeight;
 
-    // Use the most accurate measurement (usually children or bounding)
-    // scrollHeight can be inflated by CSS min-height
-    const heights = [scrollHeight, boundingHeight, childrenHeight].filter(h => h > 0);
+      // Use the larger of the two for accuracy
+      const actualHeight = Math.max(childHeight, offsetHeight);
 
-    // For shrinking, prefer smaller accurate values; for growing prefer larger
-    if (lastSentHeight > 0) {
-      // If content likely shrunk, use the minimum non-zero value
-      const minHeight = Math.min(...heights);
-      const maxHeight = Math.max(...heights);
-      // If there's a big difference, trust the smaller value (content removed)
-      if (maxHeight - minHeight > 100) {
-        return Math.max(minHeight, 300); // Minimum 300px
+      if (actualHeight > 0) {
+        // Add small padding for safety
+        return Math.ceil(actualHeight) + 20;
       }
     }
 
-    return Math.max(...heights, 300);
+    // Method 2: Fallback to computing from all children
+    const rootRect = root.getBoundingClientRect();
+    let maxBottom = 0;
+
+    // Check all descendant elements to find the actual content extent
+    const allElements = root.querySelectorAll('*');
+    for (const el of Array.from(allElements)) {
+      const rect = (el as HTMLElement).getBoundingClientRect();
+      // Calculate position relative to root, not viewport
+      const relativeBottom = rect.bottom - rootRect.top;
+      if (relativeBottom > maxBottom && rect.height > 0) {
+        maxBottom = relativeBottom;
+      }
+    }
+
+    if (maxBottom > 0) {
+      return Math.ceil(maxBottom) + 20;
+    }
+
+    // Method 3: Last resort - use scrollHeight but cap it reasonably
+    return Math.min(root.scrollHeight, 2000);
   };
 
   const sendHeightToParent = (force: boolean = false) => {
@@ -99,7 +111,7 @@ const initIframeHeightCommunication = () => {
     isThrottled = false;
 
     // Multiple measurements with increasing delays to catch DOM updates
-    [0, 50, 150, 300, 500].forEach(delay => {
+    [0, 50, 150, 300, 500, 800].forEach(delay => {
       setTimeout(() => sendHeightToParent(true), delay);
     });
   };
@@ -118,6 +130,10 @@ const initIframeHeightCommunication = () => {
       const root = document.getElementById('root');
       if (root) {
         observer.observe(root);
+        // Also observe the first child (main app container)
+        if (root.firstElementChild) {
+          observer.observe(root.firstElementChild);
+        }
       }
     };
 
