@@ -1,4 +1,6 @@
 [build]
+  # Build image: Ubuntu Noble 24.04 (select in Netlify Dashboard)
+  # Required: Node.js 20+, npm 10+
   command = "CI=false npm run build"
   publish = "dist"
 
