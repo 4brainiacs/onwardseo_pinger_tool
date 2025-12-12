@@ -2,7 +2,6 @@ import { PING_SERVICES } from '../services/pingServices';
 import type { PingResults, ProgressInfo, PingResult } from '../types';
 import { pingService } from './pingChecker';
 import { handleError, logError } from './errorHandler';
-import { logger } from './logger';
 
 export class PingController {
   private isPaused: boolean = false;
@@ -15,7 +14,7 @@ export class PingController {
   private readonly RETRY_DELAY = 1000;
   private readonly PING_DELAY = 500;
   private abortController: AbortController | null = null;
-  private activeRequests: Set<Promise<any>> = new Set();
+  private activeRequests: Set<Promise<unknown>> = new Set();
 
   constructor(
     private onProgress: (info: ProgressInfo) => void,

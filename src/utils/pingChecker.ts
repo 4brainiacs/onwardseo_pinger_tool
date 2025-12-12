@@ -1,4 +1,4 @@
-import type { PingService, PingResult, PingResponse } from '../types/ping';
+import type { PingService, PingResponse } from '../types/ping';
 import { normalizeUrl, validateUrl } from './urlUtils';
 import { logger } from './logger';
 import { AppError, ErrorSeverity } from './errorHandler';
@@ -62,9 +62,11 @@ async function performPing(service: PingService, url: string, signal: AbortSigna
       version: '1.2.25'
     });
 
-    let requestUrl = service.method === 'GET' 
+    // Build request URL (reserved for future actual HTTP requests)
+    const _requestUrl = service.method === 'GET'
       ? `${service.url}?${queryParams.toString()}`
       : service.url;
+    void _requestUrl;
 
     const headers: Record<string, string> = {
       'Accept': 'application/json, text/plain, */*',

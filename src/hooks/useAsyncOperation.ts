@@ -29,9 +29,11 @@ export function useAsyncOperation(options: AsyncOperationOptions = {}) {
       onSuccess?.();
       return result;
     } catch (err) {
+      // Preserve original error message if available, otherwise use default
+      const message = err instanceof Error ? err.message : errorMessage;
       const error = err instanceof AppError
         ? err
-        : new AppError(errorMessage, 'OPERATION_FAILED', {
+        : new AppError(message, 'OPERATION_FAILED', {
             severity,
             context: { originalError: err }
           });

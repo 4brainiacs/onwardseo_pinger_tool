@@ -28,6 +28,12 @@ export function CategoryFilter({ selectedCategories, onCategoryChange }: Categor
   };
 
   const handleToggleCategory = (category: CategoryType) => {
+    // When all categories are selected, clicking one selects only that category
+    if (allSelected) {
+      onCategoryChange(new Set([category]));
+      return;
+    }
+
     const newCategories = new Set(selectedCategories);
     if (newCategories.has(category)) {
       if (newCategories.size > 1) {
@@ -71,6 +77,7 @@ export function CategoryFilter({ selectedCategories, onCategoryChange }: Categor
             <button
               key={category}
               onClick={() => handleToggleCategory(category)}
+              aria-checked={selectedCategories.has(category)}
               className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 px-2.5 py-2 rounded hover:bg-gray-50 w-full min-h-[40px] touch-manipulation"
             >
               {selectedCategories.has(category) ? (
