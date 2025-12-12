@@ -22,15 +22,49 @@ const initIframeHeightCommunication = () => {
   const THROTTLE_DELAY = 250;
   const MIN_HEIGHT_CHANGE = 10;
 
+  // Get actual content height using multiple methods for accuracy
+  const getContentHeight = (): number => {
+    const root = document.getElementById('root');
+    if (!root) return 0;
+
+    // Force layout recalculation
+    void root.offsetHeight;
+
+    // Get height using multiple approaches
+    const scrollHeight = root.scrollHeight;
+    const boundingHeight = root.getBoundingClientRect().height;
+
+    // Get actual content by summing children heights
+    let childrenHeight = 0;
+    for (const child of Array.from(root.children)) {
+      const rect = (child as HTMLElement).getBoundingClientRect();
+      childrenHeight = Math.max(childrenHeight, rect.bottom);
+    }
+
+    // Use the most accurate measurement (usually children or bounding)
+    // scrollHeight can be inflated by CSS min-height
+    const heights = [scrollHeight, boundingHeight, childrenHeight].filter(h => h > 0);
+
+    // For shrinking, prefer smaller accurate values; for growing prefer larger
+    if (lastSentHeight > 0) {
+      // If content likely shrunk, use the minimum non-zero value
+      const minHeight = Math.min(...heights);
+      const maxHeight = Math.max(...heights);
+      // If there's a big difference, trust the smaller value (content removed)
+      if (maxHeight - minHeight > 100) {
+        return Math.max(minHeight, 300); // Minimum 300px
+      }
+    }
+
+    return Math.max(...heights, 300);
+  };
+
   const sendHeightToParent = (force: boolean = false) => {
     // Skip throttle check if forced
     if (!force && isThrottled) return;
 
-    const root = document.getElementById('root');
-    if (!root) return;
-
-    // Get the actual rendered height of content
-    const contentHeight = root.scrollHeight;
+    const contentHeight = getContentHeight();
+    if (contentHeight === 0) return;
 
     // Skip min change check if forced (allows shrinking)
     if (!force && Math.abs(contentHeight - lastSentHeight) < MIN_HEIGHT_CHANGE) {
@@ -60,10 +94,14 @@ const initIframeHeightCommunication = () => {
 
   // Force recalculation - bypasses all checks, used for reset/completion
   const forceHeightRecalc = () => {
-    // Reset lastSentHeight to ensure the new height is sent
+    // Reset state to ensure fresh measurement
     lastSentHeight = 0;
     isThrottled = false;
-    sendHeightToParent(true);
+
+    // Multiple measurements with increasing delays to catch DOM updates
+    [0, 50, 150, 300, 500].forEach(delay => {
+      setTimeout(() => sendHeightToParent(true), delay);
+    });
   };
 
   // Listen for manual recalc events (from reset, completion, etc.)
@@ -89,6 +127,29 @@ const initIframeHeightCommunication = () => {
     } else {
       window.addEventListener('load', startObserving);
     }
+  }
+
+  // Use MutationObserver to detect DOM changes (child additions/removals)
+  const mutationObserver = new MutationObserver(() => {
+    // Debounce mutation callbacks
+    setTimeout(() => sendHeightToParent(), 100);
+  });
+
+  const startMutationObserver = () => {
+    const root = document.getElementById('root');
+    if (root) {
+      mutationObserver.observe(root, {
+        childList: true,
+        subtree: true,
+        attributes: false // Don't watch attribute changes (too noisy)
+      });
+    }
+  };
+
+  if (document.readyState === 'complete') {
+    startMutationObserver();
+  } else {
+    window.addEventListener('load', startMutationObserver);
   }
 
   // Send height after initial render and after content settles
