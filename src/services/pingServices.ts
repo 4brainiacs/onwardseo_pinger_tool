@@ -1,152 +1,92 @@
+/**
+ * Real Ping Services Configuration
+ *
+ * These services are actually pinged by the backend via:
+ * - WebSub/PubSubHubbub protocol (for Google)
+ * - XML-RPC weblogUpdates.ping protocol (for blog ping services)
+ *
+ * Each service reaches multiple downstream search engines and aggregators.
+ */
+
 import type { PingService } from '../types';
 
+/**
+ * List of real ping services
+ *
+ * Total reach: 15+ search engines and services
+ */
 export const PING_SERVICES: PingService[] = [
-  // Major Search Engines
   {
-    name: 'Google Search',
-    url: 'https://www.google.com/ping',
-    method: 'GET',
-    requiresProxy: false,
-    proxyUrl: ''
+    name: 'Google PubSubHubbub',
+    method: 'websub',
+    category: 'Search Engines',
+    description: 'Notifies Google via PubSubHubbub protocol',
+    reachesServices: ['Google Search', 'Google News']
   },
   {
-    name: 'Bing Search',
-    url: 'https://www.bing.com/ping',
-    method: 'GET',
-    requiresProxy: false,
-    proxyUrl: ''
+    name: 'Ping-o-Matic',
+    method: 'xmlrpc',
+    category: 'Blog Networks',
+    description: 'Pings 10+ blog aggregators and services',
+    reachesServices: [
+      'Feedburner',
+      'Superfeedr',
+      'Spinn3r',
+      'Blo.gs',
+      'Moreover',
+      'Syndic8',
+      'NewsGator',
+      'Audio.weblogs.com'
+    ]
   },
   {
-    name: 'Yandex Search',
-    url: 'https://blogs.yandex.ru/ping',
-    method: 'GET',
-    requiresProxy: false,
-    proxyUrl: ''
+    name: 'Yandex Blogs',
+    method: 'xmlrpc',
+    category: 'Search Engines',
+    description: 'Notifies Yandex blog search',
+    reachesServices: ['Yandex Search', 'Yandex Blogs']
   },
   {
-    name: 'DuckDuckGo',
-    url: 'https://duckduckgo.com/ping',
-    method: 'GET',
-    requiresProxy: false,
-    proxyUrl: ''
+    name: 'Twingly',
+    method: 'xmlrpc',
+    category: 'Blog Networks',
+    description: 'Swedish blog search and aggregator',
+    reachesServices: ['Twingly Blog Search']
   },
   {
-    name: 'Baidu Search',
-    url: 'https://ping.baidu.com/ping',
-    method: 'GET',
-    requiresProxy: false,
-    proxyUrl: ''
-  },
-  // Blog Services
-  {
-    name: 'WordPress',
-    url: 'https://rpc.wordpress.com/ping',
-    method: 'GET',
-    requiresProxy: false,
-    proxyUrl: ''
-  },
-  {
-    name: 'Blogger',
-    url: 'https://blogger.com/ping',
-    method: 'GET',
-    requiresProxy: false,
-    proxyUrl: ''
-  },
-  {
-    name: 'Medium',
-    url: 'https://medium.com/ping',
-    method: 'GET',
-    requiresProxy: false,
-    proxyUrl: ''
-  },
-  // Feed Services
-  {
-    name: 'Feedburner',
-    url: 'https://feedburner.google.com/ping',
-    method: 'GET',
-    requiresProxy: false,
-    proxyUrl: ''
-  },
-  {
-    name: 'RSS Feed',
-    url: 'https://rpc.rssfeeds.com/ping',
-    method: 'GET',
-    requiresProxy: false,
-    proxyUrl: ''
-  },
-  // Social Media
-  {
-    name: 'Pinterest',
-    url: 'https://pinterest.com/ping',
-    method: 'GET',
-    requiresProxy: false,
-    proxyUrl: ''
-  },
-  {
-    name: 'LinkedIn',
-    url: 'https://linkedin.com/ping',
-    method: 'GET',
-    requiresProxy: false,
-    proxyUrl: ''
-  },
-  // Regional Search Engines
-  {
-    name: 'Naver',
-    url: 'https://search.naver.com/ping',
-    method: 'GET',
-    requiresProxy: false,
-    proxyUrl: ''
-  },
-  {
-    name: 'Yahoo Japan',
-    url: 'https://search.yahoo.co.jp/ping',
-    method: 'GET',
-    requiresProxy: false,
-    proxyUrl: ''
-  },
-  {
-    name: 'Qwant',
-    url: 'https://www.qwant.com/ping',
-    method: 'GET',
-    requiresProxy: false,
-    proxyUrl: ''
-  },
-  // Directory Services
-  {
-    name: 'DMOZ',
-    url: 'https://rpc.dmoz.org/ping',
-    method: 'GET',
-    requiresProxy: false,
-    proxyUrl: ''
-  },
-  {
-    name: 'Webmaster World',
-    url: 'https://www.webmasterworld.com/ping',
-    method: 'GET',
-    requiresProxy: false,
-    proxyUrl: ''
-  },
-  // News Services
-  {
-    name: 'Google News',
-    url: 'https://news.google.com/ping',
-    method: 'GET',
-    requiresProxy: false,
-    proxyUrl: ''
-  },
-  {
-    name: 'Bing News',
-    url: 'https://news.bing.com/ping',
-    method: 'GET',
-    requiresProxy: false,
-    proxyUrl: ''
-  },
-  // Archive Services
-  {
-    name: 'Internet Archive',
-    url: 'https://web.archive.org/ping',
-    method: 'GET',
-    requiresProxy: false,
-    proxyUrl: ''
+    name: 'Weblogs.com',
+    method: 'xmlrpc',
+    category: 'Blog Networks',
+    description: 'Original blog ping service by Dave Winer',
+    reachesServices: ['Weblogs.com', 'Blog directories']
   }
 ];
+
+/**
+ * Get service by name
+ */
+export function getServiceByName(name: string): PingService | undefined {
+  return PING_SERVICES.find(s => s.name === name);
+}
+
+/**
+ * Get services by category
+ */
+export function getServicesByCategory(category: string): PingService[] {
+  return PING_SERVICES.filter(s => s.category === category);
+}
+
+/**
+ * Get all unique categories
+ */
+export function getCategories(): string[] {
+  return [...new Set(PING_SERVICES.map(s => s.category))];
+}
+
+/**
+ * Get total count of downstream services reached
+ */
+export function getTotalReach(): number {
+  const allServices = PING_SERVICES.flatMap(s => s.reachesServices);
+  return new Set(allServices).size;
+}

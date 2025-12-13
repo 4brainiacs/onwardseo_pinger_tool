@@ -4,6 +4,18 @@
   command = "CI=false npm run build"
   publish = "dist"
 
+# Netlify Functions configuration
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# API routes - must come BEFORE the catch-all redirect
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+# SPA catch-all redirect
 [[redirects]]
   from = "/*"
   to = "/index.html"
