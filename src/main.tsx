@@ -8,9 +8,19 @@ import { getRecalcEventName } from './utils/iframeHeight';
 import App from './App';
 import './index.css';
 
-// ============================================
+// =============================================
 // IFRAME DYNAMIC HEIGHT COMMUNICATION
-// ============================================
+// NASA-Level Precision Height Measurement
+// =============================================
+
+const CONFIG = {
+  THROTTLE_DELAY: 250,
+  MIN_HEIGHT_CHANGE: 5,
+  MIN_HEIGHT: 400,
+  MAX_HEIGHT: 5000,
+  DEBOUNCE_DELAY: 100,
+} as const;
+
 const initIframeHeightCommunication = () => {
   // Only run if inside an iframe
   if (window.parent === window) {
@@ -18,68 +28,103 @@ const initIframeHeightCommunication = () => {
   }
 
   let lastSentHeight = 0;
+  let lastContentSignature = '';
   let isThrottled = false;
-  const THROTTLE_DELAY = 250;
-  const MIN_HEIGHT_CHANGE = 10;
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-  // Get actual content height by measuring real content bounds
+  // Generate a signature of actual content to detect real changes
+  const getContentSignature = (root: HTMLElement): string => {
+    const contentElements = root.querySelectorAll(
+      'h1, h2, h3, h4, p, span, label, button, input, textarea, a, li, td, th'
+    );
+    let signature = '';
+    for (const el of Array.from(contentElements).slice(0, 50)) {
+      const text = (el as HTMLElement).innerText || '';
+      if (text.trim()) {
+        signature += text.slice(0, 20);
+      }
+    }
+    return signature;
+  };
+
+  // Get actual content height by measuring ONLY content elements (not containers)
   const getContentHeight = (): number => {
     const root = document.getElementById('root');
-    if (!root) return 0;
+    if (!root) return CONFIG.MIN_HEIGHT;
 
     // Force layout recalculation
     void root.offsetHeight;
 
-    // Method 1: Get the bounding rect of the root's first child (the actual app container)
-    const firstChild = root.firstElementChild as HTMLElement;
-    if (firstChild) {
-      const childRect = firstChild.getBoundingClientRect();
-      const childHeight = childRect.height;
+    // Find all visible content elements (NOT containers which can have inflated min-height)
+    const contentSelectors = [
+      'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+      'p', 'span', 'label', 'a',
+      'button', 'input', 'textarea', 'select',
+      'img', 'svg', 'canvas',
+      'table', 'tr', 'td', 'th',
+      'li', 'ul', 'ol',
+      '[role="button"]', '[role="listitem"]',
+      '.result-item', '.ping-result', '.category-chip'
+    ].join(', ');
 
-      // Also check offsetHeight which ignores transforms
-      const offsetHeight = firstChild.offsetHeight;
-
-      // Use the larger of the two for accuracy
-      const actualHeight = Math.max(childHeight, offsetHeight);
-
-      if (actualHeight > 0) {
-        // Add small padding for safety
-        return Math.ceil(actualHeight) + 20;
-      }
-    }
-
-    // Method 2: Fallback to computing from all children
+    const contentElements = root.querySelectorAll(contentSelectors);
     const rootRect = root.getBoundingClientRect();
     let maxBottom = 0;
 
-    // Check all descendant elements to find the actual content extent
-    const allElements = root.querySelectorAll('*');
-    for (const el of Array.from(allElements)) {
-      const rect = (el as HTMLElement).getBoundingClientRect();
-      // Calculate position relative to root, not viewport
+    for (const el of Array.from(contentElements)) {
+      const htmlEl = el as HTMLElement;
+      const style = window.getComputedStyle(htmlEl);
+
+      // Skip invisible elements
+      if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+        continue;
+      }
+
+      const rect = htmlEl.getBoundingClientRect();
+
+      // Skip elements with no size
+      if (rect.height === 0 || rect.width === 0) {
+        continue;
+      }
+
+      // Calculate position relative to root
       const relativeBottom = rect.bottom - rootRect.top;
-      if (relativeBottom > maxBottom && rect.height > 0) {
+
+      if (relativeBottom > maxBottom) {
         maxBottom = relativeBottom;
       }
     }
 
-    if (maxBottom > 0) {
-      return Math.ceil(maxBottom) + 20;
-    }
+    // Add padding for visual breathing room
+    const calculatedHeight = Math.ceil(maxBottom) + 40;
 
-    // Method 3: Last resort - use scrollHeight but cap it reasonably
-    return Math.min(root.scrollHeight, 2000);
+    // Apply sanity bounds - never go below MIN or above MAX
+    const boundedHeight = Math.max(CONFIG.MIN_HEIGHT, Math.min(CONFIG.MAX_HEIGHT, calculatedHeight));
+
+    return boundedHeight;
   };
 
   const sendHeightToParent = (force: boolean = false) => {
     // Skip throttle check if forced
     if (!force && isThrottled) return;
 
-    const contentHeight = getContentHeight();
-    if (contentHeight === 0) return;
+    const root = document.getElementById('root');
+    if (!root) return;
 
-    // Skip min change check if forced (allows shrinking)
-    if (!force && Math.abs(contentHeight - lastSentHeight) < MIN_HEIGHT_CHANGE) {
+    // Check if content actually changed
+    const currentSignature = getContentSignature(root);
+    const contentChanged = currentSignature !== lastContentSignature;
+
+    if (!force && !contentChanged) {
+      return;
+    }
+
+    lastContentSignature = currentSignature;
+
+    const contentHeight = getContentHeight();
+
+    // Skip if height change is too small (unless forced)
+    if (!force && Math.abs(contentHeight - lastSentHeight) < CONFIG.MIN_HEIGHT_CHANGE) {
       return;
     }
 
@@ -100,14 +145,26 @@ const initIframeHeightCommunication = () => {
       isThrottled = true;
       setTimeout(() => {
         isThrottled = false;
-      }, THROTTLE_DELAY);
+      }, CONFIG.THROTTLE_DELAY);
     }
+  };
+
+  // Debounced height update for DOM mutations
+  const debouncedHeightUpdate = () => {
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+    }
+    debounceTimer = setTimeout(() => {
+      sendHeightToParent();
+      debounceTimer = null;
+    }, CONFIG.DEBOUNCE_DELAY);
   };
 
   // Force recalculation - bypasses all checks, used for reset/completion
   const forceHeightRecalc = () => {
     // Reset state to ensure fresh measurement
     lastSentHeight = 0;
+    lastContentSignature = '';
     isThrottled = false;
 
     // Multiple measurements with increasing delays to catch DOM updates
@@ -122,7 +179,7 @@ const initIframeHeightCommunication = () => {
   // Use ResizeObserver - only on root element
   if (typeof ResizeObserver !== 'undefined') {
     const observer = new ResizeObserver(() => {
-      sendHeightToParent();
+      debouncedHeightUpdate();
     });
 
     // Wait for root to be available, then observe
@@ -147,8 +204,7 @@ const initIframeHeightCommunication = () => {
 
   // Use MutationObserver to detect DOM changes (child additions/removals)
   const mutationObserver = new MutationObserver(() => {
-    // Debounce mutation callbacks
-    setTimeout(() => sendHeightToParent(), 100);
+    debouncedHeightUpdate();
   });
 
   const startMutationObserver = () => {
@@ -174,7 +230,7 @@ const initIframeHeightCommunication = () => {
   setTimeout(sendHeightToParent, 3000);
 
   // Also send on window resize
-  window.addEventListener('resize', () => sendHeightToParent());
+  window.addEventListener('resize', () => debouncedHeightUpdate());
 
   logger.info('Iframe height communication initialized', { component: 'IframeResize' });
 };
@@ -211,11 +267,11 @@ try {
 
   logger.info('Application mounted successfully', { component: 'AppInit' });
 } catch (error) {
-  logger.error('Critical application failure', { 
+  logger.error('Critical application failure', {
     component: 'AppInit',
     error: error instanceof Error ? error : new Error(String(error))
   });
-  
+
   if (container) {
     container.innerHTML = `
       <div style="display: flex; justify-content: center; align-items: center; height: 100vh; padding: 20px; text-align: center;">
