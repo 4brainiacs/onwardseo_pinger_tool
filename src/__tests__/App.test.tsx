@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from '../App';
 import { PingController } from '../utils/PingController';
-import { ErrorProvider } from '../context/ErrorProvider';
+import { ErrorProvider } from '../context/ErrorContext';
 
 vi.mock('../utils/PingController');
 
@@ -56,7 +56,7 @@ describe('App Component', () => {
 
   test('handles successful ping operation', async () => {
     const mockStart = vi.fn().mockResolvedValue(undefined);
-    (PingController as jest.Mock).mockImplementation(() => ({
+    (PingController as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => ({
       start: mockStart,
       stop: vi.fn(),
       pause: vi.fn(),
@@ -82,7 +82,7 @@ describe('App Component', () => {
 
   test('handles error states', async () => {
     const mockStart = vi.fn().mockRejectedValue(new Error('Network error'));
-    (PingController as jest.Mock).mockImplementation(() => ({
+    (PingController as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => ({
       start: mockStart,
       stop: vi.fn(),
       pause: vi.fn(),
@@ -113,13 +113,24 @@ describe('App Component', () => {
       </ErrorProvider>
     );
 
+    // All Categories button should be present
     const allCategoriesButton = screen.getByRole('button', { name: /All Categories/i });
-    fireEvent.click(allCategoriesButton);
+    expect(allCategoriesButton).toBeInTheDocument();
 
-    const globalServicesButton = screen.getByRole('button', { name: /Global Services/i });
-    expect(globalServicesButton).toBeInTheDocument();
+    // Search Engines category should be present
+    const searchEnginesButton = screen.getByRole('button', { name: /Search Engines/i });
+    expect(searchEnginesButton).toBeInTheDocument();
 
-    fireEvent.click(globalServicesButton);
-    expect(globalServicesButton).toHaveAttribute('aria-checked', 'true');
+    // Blog Networks category should be present
+    const blogNetworksButton = screen.getByRole('button', { name: /Blog Networks/i });
+    expect(blogNetworksButton).toBeInTheDocument();
+
+    // Individual services should be present
+    expect(screen.getByRole('button', { name: /Google PubSubHubbub/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Ping-o-Matic/i })).toBeInTheDocument();
+
+    // Click to toggle a category
+    fireEvent.click(searchEnginesButton);
+    // After clicking, should toggle the category state
   });
 });

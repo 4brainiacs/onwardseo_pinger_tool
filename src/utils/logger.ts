@@ -63,6 +63,14 @@ class Logger {
     return entry;
   }
 
+  // Type-safe console method mapping to avoid implicit any
+  private readonly logMethods: Record<LogLevel, (...args: unknown[]) => void> = {
+    info: console.info.bind(console),
+    warn: console.warn.bind(console),
+    error: console.error.bind(console),
+    debug: console.debug.bind(console)
+  };
+
   private processLogEntry(entry: LogEntry): void {
     if (this.isProduction) {
       this.logQueue.push(entry);
@@ -71,7 +79,7 @@ class Logger {
       }
     } else {
       const { level, message, context, error } = entry;
-      const logFn = console[level] || console.log;
+      const logFn = this.logMethods[level];
       logFn(
         `[${entry.timestamp}] ${level.toUpperCase()}: ${message}`,
         context || '',

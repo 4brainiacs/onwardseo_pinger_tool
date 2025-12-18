@@ -1,5 +1,5 @@
 import { type ReactNode, useState, useCallback } from 'react';
-import type { AppError, ErrorSeverity } from '../../types/errors';
+import { AppError, type ErrorSeverity } from '../../types/errors';
 import { handleError } from '../../utils/errorHandler';
 import { logger } from '../../utils/logger';
 import { ErrorContext } from './ErrorContext';

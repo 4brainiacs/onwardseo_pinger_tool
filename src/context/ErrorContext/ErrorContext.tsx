@@ -1,5 +1,5 @@
 import { createContext } from 'react';
-import type { AppError, ErrorSeverity } from '../../types/errors';
+import { ErrorSeverity, type AppError } from '../../types/errors';
 
 export interface ErrorContextValue {
   error: AppError | null;
@@ -12,5 +12,5 @@ export const ErrorContext = createContext<ErrorContextValue>({
   error: null,
   setError: () => {},
   clearError: () => {},
-  severity: 'medium'
+  severity: ErrorSeverity.MEDIUM
 });

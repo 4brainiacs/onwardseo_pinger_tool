@@ -26,6 +26,7 @@ export function useAsyncOperation(options: AsyncOperationOptions = {}) {
     try {
       startLoading();
       const result = await operation();
+      stopLoading(); // Success path - clear loading without error
       onSuccess?.();
       return result;
     } catch (err) {
@@ -44,12 +45,12 @@ export function useAsyncOperation(options: AsyncOperationOptions = {}) {
         message: error.message
       });
 
-      stopLoading(error);
+      stopLoading(error); // Error path - clear loading WITH error preserved
       onError?.(error);
       return null;
-    } finally {
-      stopLoading();
     }
+    // NOTE: No finally block - stopLoading is called explicitly in both paths
+    // to prevent the error state from being overwritten
   }, [startLoading, stopLoading, errorMessage, severity, onSuccess, onError]);
 
   return {
