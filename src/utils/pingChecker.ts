@@ -3,6 +3,9 @@
  *
  * Calls the /api/ping backend endpoint to perform actual pings
  * to search engines and blog services.
+ *
+ * In development mode (npm run dev), returns mock responses since
+ * Netlify functions are not available locally.
  */
 
 import type { PingService, PingResponse, ApiPingResponse, ApiPingResult } from '../types/ping';
@@ -10,6 +13,25 @@ import { validateUrl } from './urlUtils';
 import { logger } from './logger';
 import { AppError, ErrorSeverity } from './errorHandler';
 import { REQUEST_TIMEOUT } from '../constants';
+import { PING_SERVICES } from '../services/pingServices';
+
+/**
+ * Check if we're running in development mode
+ * In dev mode, we use mock responses since backend is not available
+ */
+const IS_DEV_MODE = import.meta.env.DEV;
+
+/**
+ * Mock response delay range (ms) for realistic simulation
+ */
+const MOCK_DELAY_MIN = 200;
+const MOCK_DELAY_MAX = 1500;
+
+/**
+ * Success rate for mock responses (0-1)
+ * 90% success rate for realistic testing
+ */
+const MOCK_SUCCESS_RATE = 0.9;
 
 /**
  * Custom error class for ping operations
@@ -62,6 +84,51 @@ function clearExpiredCache(): void {
       responseCache.delete(key);
     }
   }
+}
+
+/**
+ * Generates a random delay within the mock delay range
+ */
+function getRandomDelay(): number {
+  return Math.floor(Math.random() * (MOCK_DELAY_MAX - MOCK_DELAY_MIN + 1)) + MOCK_DELAY_MIN;
+}
+
+/**
+ * Generates mock ping responses for development mode
+ * Simulates realistic responses with varying success/failure states
+ */
+async function generateMockResponse(urls: string[]): Promise<ApiPingResponse> {
+  const startTime = Date.now();
+
+  logger.info('[MOCK MODE] Generating mock ping responses', { urls });
+
+  // Simulate network delay
+  await new Promise(resolve => setTimeout(resolve, getRandomDelay()));
+
+  const results: ApiPingResult[] = PING_SERVICES.map(service => {
+    const success = Math.random() < MOCK_SUCCESS_RATE;
+    const responseTime = getRandomDelay();
+
+    return {
+      service: service.name,
+      success,
+      message: success
+        ? `[MOCK] Successfully pinged ${service.name}`
+        : `[MOCK] Failed to ping ${service.name}`,
+      method: service.method as 'websub' | 'xmlrpc',
+      responseTime,
+      error: success ? undefined : '[MOCK] Simulated failure for testing'
+    };
+  });
+
+  const totalTime = Date.now() - startTime;
+
+  return {
+    success: results.some(r => r.success),
+    results,
+    totalTime,
+    feedUrl: `[MOCK] http://localhost/api/feed?urls=${encodeURIComponent(urls.join(','))}`
+  };
 }
 
 /**
@@ -128,24 +195,61 @@ export async function pingAllServices(
     );
   }
 
+  // In development mode, use mock responses since backend is not available
+  if (IS_DEV_MODE) {
+    logger.warn('[MOCK MODE] Using mock responses - backend not available in development');
+    const mockResponse = await generateMockResponse(urls);
+
+    // Cache the mock response
+    responseCache.set(cacheKey, { response: mockResponse, timestamp: Date.now() });
+
+    return mockResponse;
+  }
+
   logger.info('Calling ping API', { urls, urlCount: urls.length });
 
   try {
-    // Create timeout signal if not provided
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
-
-    // Combine signals if one was provided
-    const effectiveSignal = signal || controller.signal;
+    // Create timeout controller for request timeout
+    const timeoutController = new AbortController();
+    const timeoutId = setTimeout(() => timeoutController.abort(), REQUEST_TIMEOUT);
 
     try {
+      // Combine timeout signal with external signal (if provided)
+      // Request will abort on EITHER timeout OR external cancellation
+      let combinedSignal: AbortSignal;
+
+      if (signal) {
+        // Use AbortSignal.any() if available (modern browsers)
+        // Falls back to manual listener-based combination for older browsers
+        if (typeof AbortSignal.any === 'function') {
+          combinedSignal = AbortSignal.any([timeoutController.signal, signal]);
+        } else {
+          // Fallback: create a new controller that aborts when either signal fires
+          const combinedController = new AbortController();
+
+          const abortHandler = () => combinedController.abort();
+          timeoutController.signal.addEventListener('abort', abortHandler);
+          signal.addEventListener('abort', abortHandler);
+
+          // Check if either signal is already aborted
+          if (timeoutController.signal.aborted || signal.aborted) {
+            combinedController.abort();
+          }
+
+          combinedSignal = combinedController.signal;
+        }
+      } else {
+        // No external signal, just use timeout signal
+        combinedSignal = timeoutController.signal;
+      }
+
       const response = await fetch('/api/ping', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ urls }),
-        signal: effectiveSignal
+        signal: combinedSignal
       });
 
       clearTimeout(timeoutId);
@@ -252,11 +356,13 @@ export function getServiceResult(
  *
  * @param service - The service to ping
  * @param url - The URL to ping
+ * @param signal - Optional AbortSignal for cancellation
  * @returns Promise resolving to ping response
  */
 export async function pingService(
   service: PingService,
-  url: string
+  url: string,
+  signal?: AbortSignal
 ): Promise<PingResponse> {
   const validation = validateUrl(url);
   if (!validation.isValid) {
@@ -273,7 +379,7 @@ export async function pingService(
   }
 
   try {
-    const apiResponse = await pingAllServices([url]);
+    const apiResponse = await pingAllServices([url], signal);
     const serviceResult = getServiceResult(apiResponse, service.name);
 
     if (!serviceResult) {

@@ -9,9 +9,6 @@ export class PingController {
   private isRunning: boolean = false;
   private pausePromise: Promise<void> | null = null;
   private pauseResolve: (() => void) | null = null;
-  private currentRetries: Map<string, number> = new Map();
-  private readonly MAX_RETRIES = 2;
-  private readonly RETRY_DELAY = 1000;
   private readonly PING_DELAY = 500;
   private abortController: AbortController | null = null;
   private activeRequests: Set<Promise<unknown>> = new Set();
@@ -40,15 +37,18 @@ export class PingController {
     context: string,
     metadata?: Record<string, unknown>
   ): Promise<T | null> {
+    const promise = operation();
+    this.activeRequests.add(promise);
+
     try {
-      const promise = operation();
-      this.activeRequests.add(promise);
       const result = await promise;
-      this.activeRequests.delete(promise);
       return result;
     } catch (error) {
       this.handleError(error, context, metadata);
       return null;
+    } finally {
+      // Always cleanup - prevents memory leak on both success and error paths
+      this.activeRequests.delete(promise);
     }
   }
 
@@ -88,7 +88,6 @@ export class PingController {
     this.isRunning = false;
     this.pausePromise = null;
     this.pauseResolve = null;
-    this.currentRetries.clear();
     this.activeRequests.clear();
     if (this.abortController) {
       this.abortController.abort();
@@ -102,7 +101,7 @@ export class PingController {
     }
   }
 
-  async start(urls: string[]): Promise<void> {
+  async start(urls: string[], selectedServiceNames?: Set<string>): Promise<void> {
     if (this.isRunning) {
       throw new Error('Ping process is already running');
     }
@@ -111,10 +110,19 @@ export class PingController {
       this.reset();
       this.isRunning = true;
       this.abortController = new AbortController();
-      
+
+      // Filter services based on selection (default to all if not specified)
+      const servicesToPing = selectedServiceNames && selectedServiceNames.size > 0
+        ? PING_SERVICES.filter(s => selectedServiceNames.has(s.name))
+        : PING_SERVICES;
+
+      if (servicesToPing.length === 0) {
+        throw new Error('No services selected for pinging');
+      }
+
       const results: PingResults = {};
       urls.forEach(url => {
-        results[url] = PING_SERVICES.map(() => ({
+        results[url] = servicesToPing.map(() => ({
           status: 'pending',
           timestamp: Date.now(),
           url
@@ -122,7 +130,7 @@ export class PingController {
       });
 
       let completed = 0;
-      const total = urls.length * PING_SERVICES.length;
+      const total = urls.length * servicesToPing.length;
       let successes = 0;
       let errors = 0;
 
@@ -131,7 +139,7 @@ export class PingController {
         total,
         completed,
         currentUrl: urls[0],
-        currentService: PING_SERVICES[0].name,
+        currentService: servicesToPing[0].name,
         errors,
         successes
       });
@@ -139,7 +147,7 @@ export class PingController {
       for (const url of urls) {
         if (this.isStopped) break;
 
-        for (const [index, service] of PING_SERVICES.entries()) {
+        for (const [index, service] of servicesToPing.entries()) {
           if (this.isStopped) break;
 
           await this.waitIfPaused();
@@ -155,7 +163,7 @@ export class PingController {
           });
 
           const response = await this.safeExecute(
-            () => pingService(service, url),
+            () => pingService(service, url, this.abortController?.signal),
             'PingController.start.ping',
             { service: service.name, url }
           );
@@ -199,7 +207,7 @@ export class PingController {
               successes
             });
 
-            if (!this.isStopped && index < PING_SERVICES.length - 1) {
+            if (!this.isStopped && index < servicesToPing.length - 1) {
               await new Promise(resolve => setTimeout(resolve, this.PING_DELAY));
             }
           }
