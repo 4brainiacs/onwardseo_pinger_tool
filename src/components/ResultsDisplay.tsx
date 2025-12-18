@@ -5,32 +5,38 @@ import type { PingResults } from '../types';
 
 interface ResultsDisplayProps {
   results: PingResults;
+  selectedServices: Set<string>;
 }
 
-export function ResultsDisplay({ results }: ResultsDisplayProps) {
+export function ResultsDisplay({ results, selectedServices }: ResultsDisplayProps) {
   const hasResults = Object.keys(results).length > 0;
-  
+
   if (!hasResults) return null;
-  
+
+  // Filter services to only show selected ones
+  const servicesToShow = selectedServices.size > 0
+    ? PING_SERVICES.filter(s => selectedServices.has(s.name))
+    : PING_SERVICES;
+
   return (
     <div className="w-full max-w-4xl">
       <h2 className="text-lg font-semibold text-gray-900 mb-3">Ping Results</h2>
-      
+
       <div className="space-y-3 max-h-[calc(100vh-420px)] min-h-[200px] overflow-y-auto overscroll-contain pb-4">
         {Object.entries(results).map(([url, pingResults]) => {
           const completedPings = pingResults.filter(r => r.status !== 'pending').length;
           const successPings = pingResults.filter(r => r.status === 'success').length;
           const progress = (completedPings / pingResults.length) * 100;
           const hasStarted = completedPings > 0;
-          
+
           if (!hasStarted) return null;
-          
+
           return (
             <div key={url} className="bg-white rounded-lg border border-gray-200 p-2.5 shadow-sm">
               <h3 className="text-sm font-medium text-gray-700 break-all mb-2.5">
                 {url}
               </h3>
-              
+
               <div className="mb-3">
                 <div className="flex justify-between text-xs text-gray-500 mb-1">
                   <span>{completedPings} of {pingResults.length} ({successPings} successful)</span>
@@ -43,10 +49,12 @@ export function ResultsDisplay({ results }: ResultsDisplayProps) {
                   />
                 </div>
               </div>
-              
+
               <div className="grid gap-1.5 grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
-                {PING_SERVICES.map((service, index) => {
+                {servicesToShow.map((service, index) => {
                   const result = pingResults[index];
+                  if (!result) return null;
+
                   return (
                     <div
                       key={service.name}

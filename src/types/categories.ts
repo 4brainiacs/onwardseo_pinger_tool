@@ -1,8 +1,7 @@
-export type CategoryType = 
-  | 'Global Services'
-  | 'Search Engine Services'
-  | 'RSS Services'
-  | 'Blog Directory Services'
-  | 'Asian Services'
-  | 'European Services'
-  | 'Blog Platform Services';
+/**
+ * Category types for ping services
+ * These match the actual categories used in pingServices.ts
+ */
+export type CategoryType =
+  | 'Search Engines'
+  | 'Blog Networks';

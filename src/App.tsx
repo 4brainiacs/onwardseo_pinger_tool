@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { Globe } from 'lucide-react';
 import { URLInput } from './components/URLInput';
 import { CategoryFilter } from './components/CategoryFilter';
@@ -7,16 +7,20 @@ import { ResultsDisplay } from './components/ResultsDisplay';
 import { PingControls } from './components/PingControls';
 import { PingController } from './utils/PingController';
 import { ErrorContainer } from './components/ErrorContainer';
-import { useErrorState } from './hooks/useErrorState';
+import { useErrorContext } from './context';
 import { useAsyncOperation } from './hooks/useAsyncOperation';
 import { AppError } from './utils/errorHandler';
 import { logger } from './utils/logger';
 import { triggerHeightRecalc } from './utils/iframeHeight';
-import type { PingResults, ProgressInfo, CategoryType } from './types';
+import { PING_SERVICES } from './services/pingServices';
+import type { PingResults, ProgressInfo } from './types';
+
+// Initialize with all services selected by default
+const ALL_SERVICE_NAMES = PING_SERVICES.map(s => s.name);
 
 function App() {
-  const [selectedCategories, setSelectedCategories] = useState<Set<CategoryType>>(
-    new Set(['Global Services', 'Search Engine Services'])
+  const [selectedServices, setSelectedServices] = useState<Set<string>>(
+    new Set(ALL_SERVICE_NAMES)
   );
   const [results, setResults] = useState<PingResults>({});
   const [isLoading, setIsLoading] = useState(false);
@@ -33,16 +37,25 @@ function App() {
   const [activeUrls, setActiveUrls] = useState<string[]>([]);
   const pingControllerRef = useRef<PingController | null>(null);
 
-  const { error, setError, clearError, retry, canRetry } = useErrorState({
-    maxRetries: 3,
-    onMaxRetriesReached: () => {
-      logger.error('Maximum retries reached', {
-        component: 'App',
-        activeUrls
-      });
-      handleStop();
-    }
-  });
+  // Use shared error context for consistent error state across components
+  const { error, setError, clearError } = useErrorContext();
+
+  // Local retry state management
+  const [retryCount, setRetryCount] = useState(0);
+  const MAX_RETRIES = 3;
+
+  // Computed retry eligibility
+  const canRetry = retryCount < MAX_RETRIES && error?.retryable !== false;
+
+  // Handle max retries reached
+  const handleMaxRetriesReached = useCallback(() => {
+    logger.error('Maximum retries reached', {
+      component: 'App',
+      activeUrls,
+      retryCount
+    });
+    handleStop();
+  }, [activeUrls, retryCount]);
 
   const { execute } = useAsyncOperation({
     onError: (error) => {
@@ -63,14 +76,18 @@ function App() {
       setResults({});
       setActiveUrls(urls);
 
-      pingControllerRef.current = new PingController(
+      const controller = new PingController(
         (info) => setProgress(info),
         (results) => setResults(results),
         (error) => setError(error)
       );
+      pingControllerRef.current = controller;
 
       await execute(async () => {
-        await pingControllerRef.current!.start(urls);
+        // Use the local controller variable to avoid non-null assertion
+        // This is guaranteed to be defined since we just created it above
+        // Pass selectedServices to only ping the services user has selected
+        await controller.start(urls, selectedServices);
         setIsCompleted(true);
       });
     } finally {
@@ -110,6 +127,7 @@ function App() {
     setIsCompleted(false);
     setIsPaused(false);
     clearError();
+    setRetryCount(0); // Reset retry count when resetting the form
     setProgress({
       total: 0,
       completed: 0,
@@ -129,8 +147,27 @@ function App() {
   };
 
   const handleRetry = async () => {
-    if (canRetry && activeUrls.length > 0) {
-      await retry(() => handleSubmit(activeUrls));
+    if (!canRetry || activeUrls.length === 0) {
+      return;
+    }
+
+    // Increment retry count
+    const newRetryCount = retryCount + 1;
+    setRetryCount(newRetryCount);
+
+    // Check if we've hit max retries
+    if (newRetryCount >= MAX_RETRIES) {
+      handleMaxRetriesReached();
+      return;
+    }
+
+    // Clear error and retry the operation
+    clearError();
+    try {
+      await handleSubmit(activeUrls);
+    } catch (err) {
+      // Error will be handled by handleSubmit's error handling
+      setError(err);
     }
   };
 
@@ -168,8 +205,8 @@ function App() {
           )}
 
           <CategoryFilter
-            selectedCategories={selectedCategories}
-            onCategoryChange={setSelectedCategories}
+            selectedServices={selectedServices}
+            onServiceChange={setSelectedServices}
           />
 
           <URLInput
@@ -194,7 +231,7 @@ function App() {
             </div>
           )}
 
-          <ResultsDisplay results={results} />
+          <ResultsDisplay results={results} selectedServices={selectedServices} />
         </div>
       </div>
     </div>
