@@ -4,9 +4,10 @@
  * Receives URLs and pings multiple services:
  * 1. Google PubSubHubbub (via WebSub protocol)
  * 2. Ping-o-Matic (XML-RPC) - reaches 10+ downstream services
- * 3. Yandex Blogs (XML-RPC)
- * 4. Twingly (XML-RPC)
- * 5. Weblogs.com (XML-RPC)
+ * 3. Twingly (XML-RPC) - Swedish blog search engine
+ *
+ * IMPORTANT: Netlify Functions have a 30-second execution limit.
+ * Service timeouts and retries are configured to complete within 25s.
  *
  * Endpoint: POST /api/ping
  * Body: { urls: string[] }
@@ -14,7 +15,7 @@
 
 import type { Context, Config } from '@netlify/functions';
 import type { PingRequest, PingResponse, PingResult } from './lib/types';
-import { XMLRPC_SERVICES, WEBSUB_HUB, MAX_URLS, MAX_BODY_SIZE, URL_PATTERN, BATCH_SIZE, isUrlSafe } from './lib/types';
+import { XMLRPC_SERVICES, WEBSUB_HUB, MAX_URLS, MAX_BODY_SIZE, URL_PATTERN, BATCH_SIZE, MAX_FUNCTION_EXECUTION_MS, isUrlSafe } from './lib/types';
 import { sendXmlRpcPing } from './lib/xmlrpc';
 import { notifyGoogleHub } from './lib/websub';
 
@@ -97,14 +98,35 @@ function extractSiteName(url: string): string {
 }
 
 /**
- * Pings all services for a single URL
+ * Pings all services for a single URL with timeout protection
+ *
+ * @param url - The URL to ping
+ * @param feedUrl - The feed URL for WebSub
+ * @param functionStartTime - When the function started (for timeout calculation)
  */
 async function pingAllServices(
   url: string,
-  feedUrl: string
+  feedUrl: string,
+  functionStartTime: number
 ): Promise<PingResult[]> {
   const results: PingResult[] = [];
   const siteName = extractSiteName(url);
+
+  // Check if we have enough time remaining (need at least 10s for safe execution)
+  const elapsedTime = Date.now() - functionStartTime;
+  const remainingTime = MAX_FUNCTION_EXECUTION_MS - elapsedTime;
+
+  if (remainingTime < 10000) {
+    console.warn(`[Ping API] Insufficient time remaining (${remainingTime}ms), skipping pings`);
+    return [{
+      service: 'System',
+      success: false,
+      message: 'Function timeout approaching, request skipped',
+      method: 'xmlrpc',
+      responseTime: 0,
+      error: 'Timeout protection triggered'
+    }];
+  }
 
   // Create all ping promises
   const promises: Promise<void>[] = [];
@@ -180,11 +202,12 @@ export default async (req: Request, context: Context): Promise<Response> => {
   // CORS headers for frontend access
   // In development (localhost), allow all origins
   // In production, restrict to specific origin for security
+  // App is hosted at tools.onwardseo.com (embedded via iframe on onwardseo.com)
   const requestOrigin = req.headers.get('origin') || '';
   const isLocalhost = requestOrigin.includes('localhost') || requestOrigin.includes('127.0.0.1');
   const allowedOrigin = isLocalhost
     ? requestOrigin
-    : (process.env.ALLOWED_ORIGIN || 'https://onwardseo.com');
+    : (process.env.ALLOWED_ORIGIN || 'https://tools.onwardseo.com');
   const corsHeaders = {
     'Access-Control-Allow-Origin': allowedOrigin,
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -251,18 +274,25 @@ export default async (req: Request, context: Context): Promise<Response> => {
 
     // Ping all services for all URLs using batch processing
     // This limits concurrent requests to prevent rate limiting and resource exhaustion
-    // BATCH_SIZE URLs × 5 services = max 10 concurrent requests
+    // BATCH_SIZE URLs × 3 services = max 6 concurrent requests
     const allResults: PingResult[] = [];
     const resultsPerUrl: PingResult[][] = [];
 
     // Process URLs in batches to limit concurrent requests
     for (let i = 0; i < urls.length; i += BATCH_SIZE) {
+      // Check timeout before processing each batch
+      const elapsedTime = Date.now() - startTime;
+      if (elapsedTime > MAX_FUNCTION_EXECUTION_MS) {
+        console.warn(`[Ping API] Function timeout reached after ${elapsedTime}ms, stopping batch processing`);
+        break;
+      }
+
       const batch = urls.slice(i, i + BATCH_SIZE);
 
       // Process this batch in parallel
       const batchResults = await Promise.all(
         batch.map(async (url) => {
-          const urlResults = await pingAllServices(url, feedUrl);
+          const urlResults = await pingAllServices(url, feedUrl, startTime);
           // Add URL context to each result
           return urlResults.map(r => ({
             ...r,

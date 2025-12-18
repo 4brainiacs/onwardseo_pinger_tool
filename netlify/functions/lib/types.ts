@@ -53,35 +53,31 @@ export interface XmlRpcService {
 }
 
 // Retry configuration
-export const DEFAULT_RETRY_COUNT = 2;
-export const RETRY_DELAY_MS = 1000; // Base delay for exponential backoff
+// IMPORTANT: Netlify Functions have a 30-second execution limit
+// Keep retries minimal to avoid timeout
+export const DEFAULT_RETRY_COUNT = 1;
+export const RETRY_DELAY_MS = 500; // Reduced base delay for exponential backoff
+
+// Function execution safety margin
+// Netlify limit is 30s, we use 25s to ensure graceful completion
+export const MAX_FUNCTION_EXECUTION_MS = 25000;
 
 // List of XML-RPC ping services
-// Service names verified as of December 2025
+// Verified working as of December 2025
+// REMOVED: Yandex Blogs (deprecated/blocking automated requests)
+// REMOVED: Weblogs.com (unreliable, 30s+ response times)
 export const XMLRPC_SERVICES: XmlRpcService[] = [
   {
-    name: 'Ping-o-Matic',           // WordPress Foundation service
+    name: 'Ping-o-Matic',           // WordPress Foundation service - most reliable
     endpoint: 'http://rpc.pingomatic.com/RPC2',
-    timeout: 15000,                  // 15s timeout
-    maxRetries: 2
-  },
-  {
-    name: 'Yandex Blogs',           // Yandex blog ping service
-    endpoint: 'http://ping.blogs.yandex.ru/RPC2',
-    timeout: 20000,                  // 20s timeout (can be slow/unreliable)
-    maxRetries: 3                    // Extra retries for flaky service
+    timeout: 10000,                  // 10s timeout (reduced from 15s)
+    maxRetries: 1                    // Reduced from 2
   },
   {
     name: 'Twingly',                // Swedish blog search engine
-    endpoint: 'http://rpc.twingly.com/',
-    timeout: 15000,                  // 15s timeout
-    maxRetries: 2
-  },
-  {
-    name: 'Weblogs.com',            // VeriSign ping service
-    endpoint: 'http://rpc.weblogs.com/RPC2',
-    timeout: 30000,                  // 30s timeout (known to be slow)
-    maxRetries: 3                    // Extra retries for slow service
+    endpoint: 'https://rpc.twingly.com/',  // HTTPS required per Twingly docs
+    timeout: 10000,                  // 10s timeout (reduced from 15s)
+    maxRetries: 1                    // Reduced from 2
   }
 ];
 
@@ -90,8 +86,8 @@ export const XMLRPC_SERVICES: XmlRpcService[] = [
 export const WEBSUB_HUB = {
   name: 'Google PubSubHubbub',       // Official Google hub name
   url: 'https://pubsubhubbub.appspot.com/',
-  timeout: 15000,                    // 15s timeout
-  maxRetries: 2
+  timeout: 10000,                    // 10s timeout (reduced from 15s)
+  maxRetries: 1                      // Reduced from 2
 };
 
 // Validation constants
@@ -100,7 +96,7 @@ export const MAX_BODY_SIZE = 50 * 1024; // 50KB - sufficient for 5 URLs with met
 export const URL_PATTERN = /^https?:\/\/[^\s/$.?#].[^\s]*$/i;
 
 // Batch processing - limits concurrent requests to prevent rate limiting
-// 2 URLs × 5 services = 10 concurrent requests max
+// 2 URLs × 3 services (Google, Ping-o-Matic, Twingly) = 6 concurrent requests max
 export const BATCH_SIZE = 2;
 
 // SSRF prevention - block private/internal IP ranges

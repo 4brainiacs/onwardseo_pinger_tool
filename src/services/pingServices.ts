@@ -6,6 +6,13 @@
  * - XML-RPC weblogUpdates.ping protocol (for blog ping services)
  *
  * Each service reaches multiple downstream search engines and aggregators.
+ *
+ * IMPORTANT: Service list must match backend configuration in:
+ * netlify/functions/lib/types.ts
+ *
+ * REMOVED SERVICES (December 2025):
+ * - Yandex Blogs: Deprecated, blocking automated requests
+ * - Weblogs.com: Unreliable, 30s+ response times causing timeouts
  */
 
 import type { PingService } from '../types';
@@ -13,7 +20,7 @@ import type { PingService } from '../types';
 /**
  * List of real ping services
  *
- * Total reach: 15+ search engines and services
+ * Total reach: 12+ search engines and services via 3 active endpoints
  */
 export const PING_SERVICES: PingService[] = [
   {
@@ -40,25 +47,11 @@ export const PING_SERVICES: PingService[] = [
     ]
   },
   {
-    name: 'Yandex Blogs',
-    method: 'xmlrpc',
-    category: 'Search Engines',
-    description: 'Notifies Yandex blog search',
-    reachesServices: ['Yandex Search', 'Yandex Blogs']
-  },
-  {
     name: 'Twingly',
     method: 'xmlrpc',
     category: 'Blog Networks',
     description: 'Swedish blog search and aggregator',
     reachesServices: ['Twingly Blog Search']
-  },
-  {
-    name: 'Weblogs.com',
-    method: 'xmlrpc',
-    category: 'Blog Networks',
-    description: 'Original blog ping service by Dave Winer',
-    reachesServices: ['Weblogs.com', 'Blog directories']
   }
 ];
 
