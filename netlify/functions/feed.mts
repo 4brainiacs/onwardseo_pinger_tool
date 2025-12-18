@@ -130,43 +130,56 @@ function validateUrls(urlsParam: string | null): { valid: boolean; urls: string[
  * Main handler for the feed endpoint
  */
 export default async (req: Request, context: Context): Promise<Response> => {
-  // Only allow GET requests
-  if (req.method !== 'GET') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-
-  // Parse query parameters
-  const url = new URL(req.url);
-  const urlsParam = url.searchParams.get('urls');
-
-  // Validate URLs
-  const validation = validateUrls(urlsParam);
-  if (!validation.valid) {
-    return new Response(JSON.stringify({ error: validation.error }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-
-  // Generate feed URL (the URL of this endpoint)
-  const feedUrl = `${url.origin}${url.pathname}?urls=${encodeURIComponent(urlsParam!)}`;
-
-  // Generate Atom feed
-  const atomFeed = generateAtomFeed(validation.urls, feedUrl);
-
-  // Return feed with proper headers
-  return new Response(atomFeed, {
-    status: 200,
-    headers: {
-      'Content-Type': 'application/atom+xml; charset=utf-8',
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      // WebSub discovery headers (redundant with in-feed links, but good practice)
-      'Link': `<${WEBSUB_HUB.url}>; rel="hub", <${feedUrl}>; rel="self"`
+  try {
+    // Only allow GET requests
+    if (req.method !== 'GET') {
+      return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+        status: 405,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
-  });
+
+    // Parse query parameters
+    const url = new URL(req.url);
+    const urlsParam = url.searchParams.get('urls');
+
+    // Validate URLs
+    const validation = validateUrls(urlsParam);
+    if (!validation.valid) {
+      return new Response(JSON.stringify({ error: validation.error }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Generate feed URL (the URL of this endpoint)
+    const feedUrl = `${url.origin}${url.pathname}?urls=${encodeURIComponent(urlsParam!)}`;
+
+    // Generate Atom feed
+    const atomFeed = generateAtomFeed(validation.urls, feedUrl);
+
+    // Return feed with proper headers
+    return new Response(atomFeed, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/atom+xml; charset=utf-8',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        // WebSub discovery headers (redundant with in-feed links, but good practice)
+        'Link': `<${WEBSUB_HUB.url}>; rel="hub", <${feedUrl}>; rel="self"`
+      }
+    });
+  } catch (error) {
+    // Log detailed error internally for debugging
+    console.error('[Feed API] Unhandled error:', error instanceof Error ? error.message : error);
+
+    // Return generic error to prevent information disclosure
+    return new Response(JSON.stringify({
+      error: 'Failed to generate feed'
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
 };
 
 export const config: Config = {

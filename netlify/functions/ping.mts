@@ -14,7 +14,7 @@
 
 import type { Context, Config } from '@netlify/functions';
 import type { PingRequest, PingResponse, PingResult } from './lib/types';
-import { XMLRPC_SERVICES, WEBSUB_HUB, MAX_URLS, URL_PATTERN } from './lib/types';
+import { XMLRPC_SERVICES, WEBSUB_HUB, MAX_URLS, MAX_BODY_SIZE, URL_PATTERN, BATCH_SIZE, isUrlSafe } from './lib/types';
 import { sendXmlRpcPing } from './lib/xmlrpc';
 import { notifyGoogleHub } from './lib/websub';
 
@@ -47,11 +47,20 @@ function validateRequest(body: unknown): { valid: boolean; urls: string[]; error
     return { valid: false, urls: [], error: `Maximum ${MAX_URLS} URLs allowed, received ${urls.length}` };
   }
 
-  // Validate each URL format
+  // Validate each URL format and check for SSRF
   const invalidUrls: string[] = [];
+  const unsafeUrls: string[] = [];
+
   for (const url of urls) {
     if (!URL_PATTERN.test(url)) {
       invalidUrls.push(url);
+      continue;
+    }
+
+    // SSRF prevention - block private/internal URLs
+    const safetyCheck = isUrlSafe(url);
+    if (!safetyCheck.safe) {
+      unsafeUrls.push(`${url}: ${safetyCheck.reason}`);
     }
   }
 
@@ -60,6 +69,14 @@ function validateRequest(body: unknown): { valid: boolean; urls: string[]; error
       valid: false,
       urls: [],
       error: `Invalid URL format: ${invalidUrls.slice(0, 3).join(', ')}${invalidUrls.length > 3 ? '...' : ''}`
+    };
+  }
+
+  if (unsafeUrls.length > 0) {
+    return {
+      valid: false,
+      urls: [],
+      error: `Security: ${unsafeUrls[0]}`
     };
   }
 
@@ -94,31 +111,57 @@ async function pingAllServices(
 
   // 1. WebSub ping to Google PubSubHubbub
   promises.push(
-    notifyGoogleHub(feedUrl).then(result => {
-      results.push({
-        service: WEBSUB_HUB.name,
-        success: result.success,
-        message: result.message,
-        method: 'websub',
-        responseTime: result.responseTime,
-        error: result.success ? undefined : result.message
-      });
-    })
+    notifyGoogleHub(feedUrl)
+      .then(result => {
+        results.push({
+          service: WEBSUB_HUB.name,
+          success: result.success,
+          message: result.message,
+          method: 'websub',
+          responseTime: result.responseTime,
+          error: result.success ? undefined : result.message
+        });
+      })
+      .catch(error => {
+        // Catch errors in .then() callback to prevent silent failures
+        console.error('[WebSub] Unexpected error:', error instanceof Error ? error.message : error);
+        results.push({
+          service: WEBSUB_HUB.name,
+          success: false,
+          message: 'Failed to notify hub',
+          method: 'websub',
+          responseTime: 0,
+          error: 'Request failed'
+        });
+      })
   );
 
   // 2. XML-RPC pings to all services
   for (const service of XMLRPC_SERVICES) {
     promises.push(
-      sendXmlRpcPing(service, siteName, url).then(result => {
-        results.push({
-          service: service.name,
-          success: result.success,
-          message: result.message,
-          method: 'xmlrpc',
-          responseTime: result.responseTime,
-          error: result.success ? undefined : result.message
-        });
-      })
+      sendXmlRpcPing(service, siteName, url)
+        .then(result => {
+          results.push({
+            service: service.name,
+            success: result.success,
+            message: result.message,
+            method: 'xmlrpc',
+            responseTime: result.responseTime,
+            error: result.success ? undefined : result.message
+          });
+        })
+        .catch(error => {
+          // Catch errors in .then() callback to prevent silent failures
+          console.error(`[XMLRPC] ${service.name} unexpected error:`, error instanceof Error ? error.message : error);
+          results.push({
+            service: service.name,
+            success: false,
+            message: 'Service request failed',
+            method: 'xmlrpc',
+            responseTime: 0,
+            error: 'Request failed'
+          });
+        })
     );
   }
 
@@ -135,8 +178,15 @@ export default async (req: Request, context: Context): Promise<Response> => {
   const startTime = Date.now();
 
   // CORS headers for frontend access
+  // In development (localhost), allow all origins
+  // In production, restrict to specific origin for security
+  const requestOrigin = req.headers.get('origin') || '';
+  const isLocalhost = requestOrigin.includes('localhost') || requestOrigin.includes('127.0.0.1');
+  const allowedOrigin = isLocalhost
+    ? requestOrigin
+    : (process.env.ALLOWED_ORIGIN || 'https://onwardseo.com');
   const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': allowedOrigin,
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type'
   };
@@ -158,6 +208,20 @@ export default async (req: Request, context: Context): Promise<Response> => {
   }
 
   try {
+    // Validate request body size to prevent DoS attacks
+    const contentLength = req.headers.get('content-length');
+    if (contentLength) {
+      const size = parseInt(contentLength, 10);
+      if (size > MAX_BODY_SIZE) {
+        return new Response(JSON.stringify({
+          error: 'Request body too large'
+        }), {
+          status: 413,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders }
+        });
+      }
+    }
+
     // Parse request body
     let body: unknown;
     try {
@@ -185,21 +249,31 @@ export default async (req: Request, context: Context): Promise<Response> => {
     const origin = new URL(req.url).origin;
     const feedUrl = `${origin}/api/feed?urls=${encodeURIComponent(urls.join(','))}`;
 
-    // Ping all services for all URLs in parallel
+    // Ping all services for all URLs using batch processing
+    // This limits concurrent requests to prevent rate limiting and resource exhaustion
+    // BATCH_SIZE URLs × 5 services = max 10 concurrent requests
     const allResults: PingResult[] = [];
+    const resultsPerUrl: PingResult[][] = [];
 
-    // For each URL, ping all services
-    // We'll aggregate results across all URLs
-    const urlPromises = urls.map(async (url) => {
-      const urlResults = await pingAllServices(url, feedUrl);
-      // Add URL context to each result
-      return urlResults.map(r => ({
-        ...r,
-        message: `${r.message} (${extractSiteName(url)})`
-      }));
-    });
+    // Process URLs in batches to limit concurrent requests
+    for (let i = 0; i < urls.length; i += BATCH_SIZE) {
+      const batch = urls.slice(i, i + BATCH_SIZE);
 
-    const resultsPerUrl = await Promise.all(urlPromises);
+      // Process this batch in parallel
+      const batchResults = await Promise.all(
+        batch.map(async (url) => {
+          const urlResults = await pingAllServices(url, feedUrl);
+          // Add URL context to each result
+          return urlResults.map(r => ({
+            ...r,
+            message: `${r.message} (${extractSiteName(url)})`
+          }));
+        })
+      );
+
+      // Collect batch results
+      resultsPerUrl.push(...batchResults);
+    }
 
     // Flatten results - for simplicity, we aggregate by service
     // In a more complex implementation, we might want per-URL results
@@ -245,7 +319,8 @@ export default async (req: Request, context: Context): Promise<Response> => {
   } catch (error) {
     const totalTime = Date.now() - startTime;
 
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    // Log detailed error internally for debugging (not exposed to client)
+    console.error('[Ping API] Unhandled error:', error instanceof Error ? error.message : error);
 
     const response: PingResponse = {
       success: false,
@@ -253,9 +328,10 @@ export default async (req: Request, context: Context): Promise<Response> => {
       totalTime
     };
 
+    // Return generic message to prevent information disclosure
     return new Response(JSON.stringify({
       ...response,
-      error: `Server error: ${errorMessage}`
+      error: 'An error occurred while processing your request'
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json', ...corsHeaders }
