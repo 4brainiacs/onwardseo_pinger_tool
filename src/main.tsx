@@ -1,11 +1,8 @@
-import React from 'react';
-import { createRoot } from 'react-dom/client';
-import { ErrorProvider } from './context';
-import { ErrorBoundary } from './components/ErrorBoundary';
-import { LoadingFallback } from './components/LoadingFallback';
+import { createRoot, hydrateRoot } from 'react-dom/client';
 import { logger } from './utils/logger';
 import { getRecalcEventName } from './utils/iframeHeight';
-import App from './App';
+import { removeTextSeparators } from './utils/hydration';
+import { AppRoot } from './AppRoot';
 import './index.css';
 
 // =============================================
@@ -251,19 +248,12 @@ if (!container) {
 try {
   logger.info('Initializing application', { component: 'AppInit' });
 
-  const root = createRoot(container);
-
-  root.render(
-    <React.StrictMode>
-      <ErrorProvider>
-        <ErrorBoundary>
-          <React.Suspense fallback={<LoadingFallback />}>
-            <App />
-          </React.Suspense>
-        </ErrorBoundary>
-      </ErrorProvider>
-    </React.StrictMode>
-  );
+  if (container.firstElementChild) {
+    // The build put the first screen into #root (see vite.config.ts): take it over
+    hydrateRoot(container, <AppRoot onMounted={() => removeTextSeparators(container)} />);
+  } else {
+    createRoot(container).render(<AppRoot />);
+  }
 
   logger.info('Application mounted successfully', { component: 'AppInit' });
 } catch (error) {
