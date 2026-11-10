@@ -1,0 +1,14 @@
+# Ping My URL by onwardSEO
+
+> Free tool that sends ping notifications for up to 5 page URLs at a time to Google PubSubHubbub, Ping-o-Matic and Twingly.
+
+Paste up to 5 URLs, choose the services and click "Start Pinging". The tool pings the URLs one after another and shows the result for each service.
+
+## Tool
+
+- [Ping My URL](https://tools.onwardseo.com/): the tool
+- [Ping My URL on onwardseo.com](https://onwardseo.com/ping-my-url/): the tool's page on the onwardSEO website
+
+## About
+
+- [onwardSEO](https://onwardseo.com/): the SEO agency that provides the tool

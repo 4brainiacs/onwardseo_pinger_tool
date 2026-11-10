@@ -1,2 +1,4 @@
 /assets/*  /index.html  404
+/.well-known/ard.json  /index.html  404
+/.well-known/ai-catalog.json  /index.html  404
 /* /index.html 200
