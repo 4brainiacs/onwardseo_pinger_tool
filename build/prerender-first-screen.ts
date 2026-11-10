@@ -59,8 +59,9 @@ export function prerenderFirstScreen(define: Record<string, string>): Plugin {
         const { render } = (await import(entry)) as { render: () => string };
         const markup = render();
 
-        // Only React's text separators (<!-- -->) may be in there: src/main.tsx
-        // removes them after hydration. Any other comment would stay in the DOM.
+        // React's text separators (<!-- -->) are the only comments a complete
+        // first screen contains. Any other comment is a Suspense marker, which
+        // would mean a loading fallback was rendered instead of the screen.
         if (!markup || /<!--(?! -->)/.test(markup)) {
           throw new Error('prerender: unexpected first-screen markup');
         }

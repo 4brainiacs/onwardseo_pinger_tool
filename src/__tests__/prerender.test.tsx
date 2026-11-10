@@ -3,7 +3,26 @@ import { act } from 'react';
 import { createRoot, hydrateRoot, type Root } from 'react-dom/client';
 import { render as prerender } from '../prerender';
 import { AppRoot } from '../AppRoot';
-import { removeTextSeparators } from '../utils/hydration';
+
+/**
+ * The structure of a container, without comment nodes and with every style
+ * attribute in the browser's own spelling. React's server markup has
+ * `<!-- -->` between adjacent text pieces and writes `font-size:14px` where a
+ * client render gives `font-size: 14px;`; neither changes what is shown.
+ */
+function structureOf(source: HTMLElement): string {
+  const copy = source.cloneNode(true) as HTMLElement;
+  const walker = document.createTreeWalker(copy, NodeFilter.SHOW_COMMENT);
+  const comments: Node[] = [];
+  while (walker.nextNode()) {
+    comments.push(walker.currentNode);
+  }
+  comments.forEach(comment => comment.parentNode?.removeChild(comment));
+  copy.querySelectorAll<HTMLElement>('[style]').forEach(element => {
+    element.setAttribute('style', element.style.cssText);
+  });
+  return copy.innerHTML;
+}
 
 describe('pre-built first screen', () => {
   let container: HTMLDivElement;
@@ -26,7 +45,7 @@ describe('pre-built first screen', () => {
   // Same call as src/main.tsx
   async function hydrate(target: HTMLElement) {
     await act(async () => {
-      roots.push(hydrateRoot(target, <AppRoot onMounted={() => removeTextSeparators(target)} />));
+      roots.push(hydrateRoot(target, <AppRoot />));
     });
   }
 
@@ -36,18 +55,8 @@ describe('pre-built first screen', () => {
     expect(markup).toContain('Ping Website URLs &amp; Backlinks');
     expect(markup).toContain('placeholder="Enter up to 5 URLs (one per line)"');
     expect(markup).toContain('Start Pinging');
-    // Any other comment node would stay in the DOM after hydration
+    // Any other comment would be a Suspense marker: a fallback instead of the screen
     expect(markup.replace(/<!-- -->/g, '')).not.toContain('<!--');
-  });
-
-  test('removeTextSeparators removes only the separators', () => {
-    container.innerHTML = '<p>(<!-- -->3<!-- -->/<!-- -->3)<!--keep--><span>a<!-- -->b</span></p>';
-
-    removeTextSeparators(container);
-
-    expect(container.innerHTML).toBe('<p>(3/3)<!--keep--><span>ab</span></p>');
-    // The text pieces stay separate nodes, as in a client render
-    expect(container.querySelector('p')?.childNodes.length).toBe(6);
   });
 
   test('the counters still update after hydration', async () => {
@@ -64,23 +73,16 @@ describe('pre-built first screen', () => {
 
     expect(container.textContent).toContain('(2/3 services)');
     expect(container.textContent).toContain('(1/2)');
-    expect(container.innerHTML).not.toContain('<!--');
   });
 
-  test('hydrates without warnings into the same DOM as a client render', async () => {
+  test('hydrates without warnings into the same structure as a client render', async () => {
     const errorSpy = vi.spyOn(console, 'error');
     const warnSpy = vi.spyOn(console, 'warn');
 
     container.innerHTML = prerender();
     await hydrate(container);
 
-    // The pre-built markup spells the style attribute the browser's way
-    // ("font-size: 14px;"), so the DOM equals a client render. Development
-    // React notes that spelling difference; production React does not check it.
-    const unexpected = errorSpy.mock.calls.filter(
-      call => !(String(call[0]).includes('Prop `%s` did not match') && call[1] === 'style')
-    );
-    expect(unexpected).toEqual([]);
+    expect(errorSpy).not.toHaveBeenCalled();
     expect(warnSpy).not.toHaveBeenCalled();
 
     const clientContainer = document.createElement('div');
@@ -91,7 +93,7 @@ describe('pre-built first screen', () => {
       root.render(<AppRoot />);
     });
 
-    expect(container.innerHTML).toBe(clientContainer.innerHTML);
+    expect(structureOf(container)).toBe(structureOf(clientContainer));
     clientContainer.remove();
   });
 

@@ -1,7 +1,6 @@
 import { createRoot, hydrateRoot } from 'react-dom/client';
 import { logger } from './utils/logger';
 import { getRecalcEventName } from './utils/iframeHeight';
-import { removeTextSeparators } from './utils/hydration';
 import { AppRoot } from './AppRoot';
 import './index.css';
 
@@ -249,8 +248,8 @@ try {
   logger.info('Initializing application', { component: 'AppInit' });
 
   if (container.firstElementChild) {
-    // The build put the first screen into #root (see vite.config.ts): take it over
-    hydrateRoot(container, <AppRoot onMounted={() => removeTextSeparators(container)} />);
+    // The build put the first screen into #root (see build/prerender-first-screen.ts): take it over
+    hydrateRoot(container, <AppRoot />);
   } else {
     createRoot(container).render(<AppRoot />);
   }
