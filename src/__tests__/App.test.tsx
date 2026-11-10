@@ -25,6 +25,17 @@ describe('App Component', () => {
     expect(screen.getByRole('button', { name: /Start Pinging/i })).toBeInTheDocument();
   });
 
+  test('renders exactly one main landmark', () => {
+    const { container } = render(
+      <ErrorProvider>
+        <App />
+      </ErrorProvider>
+    );
+
+    expect(container.querySelectorAll('main')).toHaveLength(1);
+    expect(screen.getAllByRole('main')).toHaveLength(1);
+  });
+
   test('validates URL input', async () => {
     render(
       <ErrorProvider>

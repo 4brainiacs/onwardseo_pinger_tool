@@ -75,8 +75,8 @@ export function ResultsDisplay({ results, selectedServices }: ResultsDisplayProp
                         </span>
                       </div>
                       <span className={`ml-1 text-xs whitespace-nowrap ${
-                        result.status === 'pending' ? 'text-gray-400' :
-                        result.status === 'success' ? 'text-green-600' : 'text-red-600'
+                        result.status === 'pending' ? 'text-gray-500' :
+                        result.status === 'success' ? 'text-green-700' : 'text-red-600'
                       }`}>
                         {result.status}
                       </span>
