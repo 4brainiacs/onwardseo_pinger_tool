@@ -1,7 +1,7 @@
 {
   "name": "url-pinger-tool",
   "private": true,
-  "version": "1.4.0",
+  "version": "1.4.1",
   "type": "module",
   "scripts": {
     "dev": "cross-env NODE_ENV=development vite",

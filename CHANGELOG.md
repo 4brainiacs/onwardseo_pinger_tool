@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.4.1] - 2026-11-10
+
+### Agent discoverability
+- `/llms.txt` is a short Markdown description of the tool for AI agents (title, summary and links), in the format of https://llmstxt.org/. Before, it answered with the app page.
+- `/.well-known/ard.json` and `/.well-known/ai-catalog.json` answer 404: the tool publishes no agentic resources (no MCP server, agent or skill), so it has no ARD manifest. Before, both answered with the app page.
+
+### Release workflow
+- The release job may now write repository contents (`permissions: contents: write`), so pushing a `v*` tag publishes its GitHub Release. The v1.4.0 run failed with HTTP 403 for lack of this permission; that release was published by hand.
+
+### Unchanged
+- How the tool pings. Every other URL answers as before.
+
 ## [1.4.0] - 2026-11-10
 
 ### Performance
