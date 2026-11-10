@@ -5,9 +5,9 @@ import path from 'path';
 import { pathToFileURL } from 'url';
 
 /**
- * Renders the tool's first screen at build time and writes it, together with
- * the built CSS, into dist/index.html, so it is visible before the JS bundle
- * has loaded. src/main.tsx hydrates this markup in the browser.
+ * Renders the tool's first screen at build time and writes it into
+ * dist/index.html, so it is visible before the JS bundle has loaded.
+ * src/main.tsx hydrates this markup in the browser.
  *
  * @param define the same `define` values the main build uses
  */
@@ -72,24 +72,7 @@ export function prerenderFirstScreen(define: Record<string, string>): Plugin {
           throw new Error(`prerender: ${emptyRoot} not found in ${indexFile}`);
         }
 
-        // Put the built CSS into the page itself, so the pre-built first screen
-        // can be painted without waiting for a second request
-        const cssLinks = [...page.matchAll(/<link rel="stylesheet"[^>]*href="\.\/(assets\/[^"]+\.css)"[^>]*>/g)];
-        if (cssLinks.length !== 1) {
-          throw new Error(`prerender: expected 1 stylesheet link in ${indexFile}, found ${cssLinks.length}`);
-        }
-        const [cssLink, cssFile] = cssLinks[0];
-        const css = fs.readFileSync(path.join(outDir, cssFile), 'utf8');
-        if (css.includes('</style')) {
-          throw new Error('prerender: the built CSS cannot be put into a <style> element');
-        }
-
-        fs.writeFileSync(
-          indexFile,
-          page
-            .replace(emptyRoot, () => `<div id="root">${markup}</div>`)
-            .replace(cssLink, () => `<style>${css}</style>`)
-        );
+        fs.writeFileSync(indexFile, page.replace(emptyRoot, () => `<div id="root">${markup}</div>`));
       } finally {
         fs.rmSync(tempDir, { recursive: true, force: true });
       }
