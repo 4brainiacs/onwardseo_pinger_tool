@@ -97,11 +97,12 @@ export function CategoryFilter({ selectedServices, onServiceChange }: CategoryFi
         {/* All Categories Toggle */}
         <button
           onClick={handleToggleAll}
+          aria-pressed={allSelected ? true : noneSelected ? false : 'mixed'}
           className="flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900 px-2.5 py-2 rounded hover:bg-gray-50 w-full min-h-[40px] touch-manipulation"
         >
           {renderCheckbox(allSelected ? 'all' : noneSelected ? 'none' : 'some')}
           <span className="font-medium">All Categories</span>
-          <span className="text-xs text-gray-400 ml-auto">
+          <span className="text-xs text-gray-500 ml-auto">
             ({selectedServices.size}/{allServiceNames.length} services)
           </span>
         </button>
@@ -124,12 +125,12 @@ export function CategoryFilter({ selectedServices, onServiceChange }: CategoryFi
                 <button
                   key={category}
                   onClick={() => handleToggleCategory(category)}
-                  aria-checked={categoryState === 'all'}
+                  aria-pressed={categoryState === 'all' ? true : categoryState === 'some' ? 'mixed' : false}
                   className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 px-2.5 py-2 rounded hover:bg-gray-50 w-full min-h-[40px] touch-manipulation"
                 >
                   {renderCheckbox(categoryState)}
                   <span className="truncate">{category}</span>
-                  <span className="text-xs text-gray-400 ml-auto">
+                  <span className="text-xs text-gray-500 ml-auto">
                     ({selectedCount}/{servicesInCategory.length})
                   </span>
                 </button>
@@ -154,7 +155,7 @@ export function CategoryFilter({ selectedServices, onServiceChange }: CategoryFi
                 <button
                   key={service.name}
                   onClick={() => handleToggleService(service.name)}
-                  aria-checked={isSelected}
+                  aria-pressed={isSelected}
                   title={service.description}
                   className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 px-2.5 py-2 rounded hover:bg-gray-50 w-full min-h-[40px] touch-manipulation"
                 >
@@ -165,7 +166,7 @@ export function CategoryFilter({ selectedServices, onServiceChange }: CategoryFi
                   )}
                   <span className="truncate text-left">
                     {service.name}
-                    <span className="text-xs text-gray-400 ml-1">
+                    <span className="text-xs text-gray-500 ml-1">
                       ({service.category === 'Search Engines' ? 'SE' : 'BN'})
                     </span>
                   </span>
