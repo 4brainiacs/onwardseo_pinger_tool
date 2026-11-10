@@ -22,5 +22,12 @@ module.exports = {
         'react-refresh/only-export-components': 'off',
       },
     },
+    {
+      // The entry file mounts the app and exports nothing, so it is never a fast-refresh boundary
+      files: ['src/main.tsx'],
+      rules: {
+        'react-refresh/only-export-components': 'off',
+      },
+    },
   ],
 };

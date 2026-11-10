@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import App from '../App';
 import { PingController } from '../utils/PingController';
 import { ErrorProvider } from '../context/ErrorContext';
+import { PING_SERVICES } from '../services/pingServices';
 
 vi.mock('../utils/PingController');
 
@@ -76,7 +77,11 @@ describe('App Component', () => {
     fireEvent.click(submitButton);
 
     await waitFor(() => {
-      expect(mockStart).toHaveBeenCalledWith(['https://example.com']);
+      // App passes the URLs and the selected services (all of them by default)
+      expect(mockStart).toHaveBeenCalledWith(
+        ['https://example.com'],
+        new Set(PING_SERVICES.map(service => service.name))
+      );
     });
   });
 
