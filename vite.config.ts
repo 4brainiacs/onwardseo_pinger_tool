@@ -1,13 +1,16 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import { prerenderFirstScreen } from './build/prerender-first-screen';
+
+const processEnvDefine = {
+  'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV)
+};
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), prerenderFirstScreen(processEnvDefine)],
   base: './',
-  define: {
-    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV)
-  },
+  define: processEnvDefine,
   build: {
     outDir: 'dist',
     emptyOutDir: true,

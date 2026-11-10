@@ -1,6 +1,32 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Send, AlertCircle, RotateCcw } from 'lucide-react';
 import { validateUrl } from '../utils/urlUtils';
+
+/**
+ * Splits the textarea text into URLs and checks them.
+ * Returns the URLs, or the message to show when they are not acceptable.
+ */
+function checkUrls(text: string): { urls: string[] | null; error: string } {
+  const urls = text
+    .split('\n')
+    .map(url => url.trim())
+    .filter(url => url.length > 0);
+
+  if (urls.length > 5) {
+    return { urls: null, error: 'Maximum 5 URLs allowed' };
+  }
+
+  const invalidUrls = urls.filter(url => !validateUrl(url).isValid);
+
+  if (invalidUrls.length > 0) {
+    return {
+      urls: null,
+      error: `Invalid URL${invalidUrls.length > 1 ? 's' : ''}: ${invalidUrls.join(', ')}`
+    };
+  }
+
+  return { urls, error: '' };
+}
 
 interface URLInputProps {
   onSubmit: (urls: string[]) => void;
@@ -12,27 +38,22 @@ interface URLInputProps {
 export function URLInput({ onSubmit, onReset, isLoading, isCompleted }: URLInputProps) {
   const [input, setInput] = useState('');
   const [error, setError] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // The first screen is pre-built into the page, so a visitor can type before
+  // this component takes over. That text is only in the DOM: adopt it.
+  useEffect(() => {
+    const typed = textareaRef.current?.value;
+    if (typed) {
+      setInput(typed);
+      setError(checkUrls(typed).error);
+    }
+  }, []);
 
   const validateUrls = (text: string) => {
-    const urls = text
-      .split('\n')
-      .map(url => url.trim())
-      .filter(url => url.length > 0);
-
-    if (urls.length > 5) {
-      setError('Maximum 5 URLs allowed');
-      return null;
-    }
-
-    const invalidUrls = urls.filter(url => !validateUrl(url).isValid);
-    
-    if (invalidUrls.length > 0) {
-      setError(`Invalid URL${invalidUrls.length > 1 ? 's' : ''}: ${invalidUrls.join(', ')}`);
-      return null;
-    }
-
-    setError('');
-    return urls;
+    const result = checkUrls(text);
+    setError(result.error);
+    return result.urls;
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -63,6 +84,7 @@ export function URLInput({ onSubmit, onReset, isLoading, isCompleted }: URLInput
       <div className="space-y-3">
         <div className="relative">
           <textarea
+            ref={textareaRef}
             value={input}
             onChange={handleInput}
             placeholder="Enter up to 5 URLs (one per line)"
