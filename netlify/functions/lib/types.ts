@@ -36,24 +36,12 @@ export interface PingRequest {
   urls: string[];
 }
 
-// Result of the address check that runs before the pings (lib/urlcheck.ts)
-export interface UrlCheck {
-  input: string;
-  pingUrl: string | null;
-  finalUrl: string | null;
-  canonicalUrl: string | null;
-  status: number | null;
-  verdict: 'ok' | 'redirected' | 'canonical' | 'not_found' | 'unreachable' | 'blocked' | 'unverified';
-  note: string;
-}
-
 // Response body for /api/ping endpoint
 export interface PingResponse {
   success: boolean;
   results: PingResult[];
   totalTime: number;
   feedUrl?: string;
-  checks?: UrlCheck[];
 }
 
 // XML-RPC service configuration

@@ -175,8 +175,7 @@ export class PingController {
                 status: 'error',
                 timestamp: Date.now(),
                 url,
-                message: response?.message || 'Failed to ping service',
-                check: response?.check
+                message: response?.message || 'Failed to ping service'
               };
               if (response?.error) {
                 result.error = {
@@ -193,8 +192,7 @@ export class PingController {
                 status: 'success',
                 timestamp: Date.now(),
                 url,
-                message: response.message,
-                check: response.check
+                message: response.message
               };
             }
 

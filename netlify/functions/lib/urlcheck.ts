@@ -19,11 +19,25 @@ import dns from 'node:dns';
 import http from 'node:http';
 import https from 'node:https';
 import net from 'node:net';
-import type { UrlCheck } from './types';
+
+/** Result of the address check (the answer of /api/check, one per received address) */
+export interface UrlCheck {
+  /** The address as received */
+  input: string;
+  /** The address to ping, or null when the address must not be pinged */
+  pingUrl: string | null;
+  finalUrl: string | null;
+  canonicalUrl: string | null;
+  status: number | null;
+  verdict: 'ok' | 'redirected' | 'canonical' | 'not_found' | 'unreachable' | 'blocked' | 'unverified';
+  /** What to tell the visitor; empty for 'ok' */
+  note: string;
+}
 
 const MAX_REDIRECTS = 5;
 const CHECK_BUDGET_MS = 8000;
-const MAX_HEAD_BYTES = 65536;
+const MAX_HEAD_BYTES = 262144;
+const MAX_ADDRESS_LENGTH = 2048;
 const REDIRECT_CODES = new Set([301, 302, 303, 307, 308]);
 const PERMANENT_REDIRECT_CODES = new Set([301, 308]);
 
@@ -228,6 +242,10 @@ function parseUrl(value: string, base?: URL): URL | null {
  * such an address are neither sent nor shown nor pinged.
  */
 function parseSiteUrl(value: string, base: URL): URL | null {
+  // The form accepts addresses of up to 2,048 characters; a longer one named by a site is not used
+  if (value.length > MAX_ADDRESS_LENGTH) {
+    return null;
+  }
   const url = parseUrl(value, base);
   if (url) {
     url.hash = '';

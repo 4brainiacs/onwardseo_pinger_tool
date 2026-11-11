@@ -78,6 +78,70 @@ describe('URLInput Component', () => {
     expect(mockOnSubmit).toHaveBeenCalledWith(['https://www.example.com']);
   });
 
+  test('while the addresses are checked: "Checking addresses..." and everything disabled', async () => {
+    const { rerender } = render(
+      <URLInput onSubmit={mockOnSubmit} onReset={mockOnReset} isLoading={false} isCompleted={false} />
+    );
+    const input = screen.getByPlaceholderText(/Enter up to 5 URLs/i);
+    await userEvent.type(input, 'https://example.com');
+
+    rerender(
+      <URLInput onSubmit={mockOnSubmit} onReset={mockOnReset} isLoading={false} isCompleted={false} isChecking={true} />
+    );
+
+    const button = screen.getByRole('button', { name: /Checking addresses\.\.\./ });
+    expect(button).toBeDisabled();
+    expect(input).toBeDisabled();
+    expect(screen.queryByText(/Start Pinging/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Processing/i)).not.toBeInTheDocument();
+
+    rerender(
+      <URLInput onSubmit={mockOnSubmit} onReset={mockOnReset} isLoading={false} isCompleted={false} isChecking={false} />
+    );
+    expect(screen.getByRole('button', { name: /Start Pinging/i })).toBeEnabled();
+    expect(input).toBeEnabled();
+  });
+
+  test('the address check\'s message is shown, hidden after an edit, and shown again when a new one arrives', async () => {
+    const message = 'Fix before pinging: https://example.com/x — page not found (HTTP 404)';
+    const view = (checkError: string) => (
+      <URLInput onSubmit={mockOnSubmit} onReset={mockOnReset} isLoading={false} isCompleted={false} checkError={checkError} />
+    );
+    const { rerender } = render(view(''));
+    const input = screen.getByPlaceholderText(/Enter up to 5 URLs/i);
+    await userEvent.type(input, 'https://example.com/x');
+    expect(screen.queryByText(/Fix before pinging/)).not.toBeInTheDocument();
+
+    rerender(view(message));
+    const shown = screen.getByText(message);
+    // Rendered exactly like the format error line
+    expect(shown.parentElement).toHaveClass('flex', 'items-center', 'gap-1', 'text-sm', 'text-red-500');
+    expect(shown.parentElement?.querySelector('svg')).not.toBeNull();
+    // The button stays usable: the visitor fixes the text and submits again
+    expect(screen.getByRole('button', { name: /Start Pinging/i })).toBeEnabled();
+
+    await userEvent.type(input, 'y');
+    expect(screen.queryByText(message)).not.toBeInTheDocument();
+
+    // A new submit clears the message and the check brings a new one
+    rerender(view(''));
+    rerender(view('Fix before pinging: https://example.com/xy — page not found (HTTP 404)'));
+    expect(screen.getByText(/Fix before pinging: https:\/\/example\.com\/xy/)).toBeInTheDocument();
+  });
+
+  test('a format error keeps priority over the address check\'s message', async () => {
+    const message = 'Fix before pinging: https://example.com/x — page not found (HTTP 404)';
+    render(
+      <URLInput onSubmit={mockOnSubmit} onReset={mockOnReset} isLoading={false} isCompleted={false} checkError={message} />
+    );
+    expect(screen.getByText(message)).toBeInTheDocument();
+
+    await userEvent.type(screen.getByPlaceholderText(/Enter up to 5 URLs/i), 'invalid-url');
+
+    expect(screen.getByText(/Invalid URL/i)).toBeInTheDocument();
+    expect(screen.queryByText(message)).not.toBeInTheDocument();
+  });
+
   test('shows error for invalid URLs', async () => {
     render(
       <URLInput

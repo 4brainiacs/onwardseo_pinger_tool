@@ -37,12 +37,25 @@ interface URLInputProps {
   onReset: () => void;
   isLoading: boolean;
   isCompleted: boolean;
+  /** What the address check found wrong; shown like a format error until the text changes */
+  checkError?: string;
+  /** True while the addresses are being checked, before pinging starts */
+  isChecking?: boolean;
 }
 
-export function URLInput({ onSubmit, onReset, isLoading, isCompleted }: URLInputProps) {
+export function URLInput({ onSubmit, onReset, isLoading, isCompleted, checkError, isChecking }: URLInputProps) {
   const [input, setInput] = useState('');
   const [error, setError] = useState('');
+  const [showCheckError, setShowCheckError] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // A new message from the address check is shown until the text changes
+  useEffect(() => {
+    setShowCheckError(!!checkError);
+  }, [checkError]);
+
+  // A format error keeps priority over the address check's message
+  const shownError = error || (showCheckError && checkError ? checkError : '');
 
   // The first screen is pre-built into the page, so a visitor can type before
   // this component takes over. That text is only in the DOM: adopt it.
@@ -71,6 +84,7 @@ export function URLInput({ onSubmit, onReset, isLoading, isCompleted }: URLInput
 
   const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
+    setShowCheckError(false);
     // Always validate to show real-time feedback for URL count/validity
     validateUrls(e.target.value);
   };
@@ -78,6 +92,7 @@ export function URLInput({ onSubmit, onReset, isLoading, isCompleted }: URLInput
   const handleReset = () => {
     setInput('');
     setError('');
+    setShowCheckError(false);
     onReset();
   };
 
@@ -95,7 +110,7 @@ export function URLInput({ onSubmit, onReset, isLoading, isCompleted }: URLInput
             className={`w-full min-h-[180px] rounded-lg border ${
               error ? 'border-red-300' : 'border-gray-300'
             } p-3 text-sm focus:border-blue-500 focus:ring-blue-500`}
-            disabled={isLoading}
+            disabled={isLoading || !!isChecking}
             style={{ fontSize: '14px' }}
           />
         </div>
@@ -112,10 +127,15 @@ export function URLInput({ onSubmit, onReset, isLoading, isCompleted }: URLInput
           ) : (
             <button
               type="submit"
-              disabled={isLoading || !input.trim() || !!error}
+              disabled={isLoading || !!isChecking || !input.trim() || !!error}
               className={`${buttonClasses} bg-blue-600 hover:bg-blue-700 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed`}
             >
-              {isLoading ? (
+              {isChecking ? (
+                <>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  <span>Checking addresses...</span>
+                </>
+              ) : isLoading ? (
                 <>
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                   <span>Processing...</span>
@@ -128,10 +148,10 @@ export function URLInput({ onSubmit, onReset, isLoading, isCompleted }: URLInput
               )}
             </button>
           )}
-          {error && (
+          {shownError && (
             <div className="flex items-center gap-1 text-sm text-red-500">
               <AlertCircle className="h-4 w-4" />
-              <span>{error}</span>
+              <span>{shownError}</span>
             </div>
           )}
         </div>

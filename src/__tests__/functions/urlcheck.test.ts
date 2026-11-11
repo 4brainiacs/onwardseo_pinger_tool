@@ -571,7 +571,7 @@ describe('checkUrl: redirects and statuses', () => {
     await vi.waitFor(() => expect(closed).toBe(true));
   });
 
-  test('an endless HTML head: reading stops after 65,536 bytes', async () => {
+  test('an endless HTML head: reading stops after 262,144 bytes', async () => {
     let written = 0;
     let closed = false;
     const input = route('site.test', '/bighead', (_req, res) => {
@@ -592,7 +592,7 @@ describe('checkUrl: redirects and statuses', () => {
 
     expect(check).toMatchObject({ verdict: 'ok', canonicalUrl: null });
     await vi.waitFor(() => expect(closed).toBe(true));
-    expect(written).toBeLessThan(1024 * 1024);
+    expect(written).toBeLessThan(16 * 1024 * 1024);
   });
 });
 
@@ -702,9 +702,21 @@ describe('checkUrl: canonical', () => {
     });
   });
 
-  test('a canonical after 70,000 bytes of head is not found', async () => {
-    route('site.test', '/main', html(''));
+  test('a canonical after 70,000 bytes of head is found and used', async () => {
+    const canonical = route('site.test', '/main', html(''));
     const filler = `<meta name="filler" content="${'a'.repeat(70000)}">`;
+    const input = route('site.test', '/', html(`${filler}<link rel="canonical" href="/main">`));
+
+    expect(await checkUrl(input, local)).toMatchObject({
+      verdict: 'canonical',
+      pingUrl: canonical,
+      canonicalUrl: canonical
+    });
+  });
+
+  test('a canonical after 270,000 bytes of head is not found', async () => {
+    route('site.test', '/main', html(''));
+    const filler = `<meta name="filler" content="${'a'.repeat(270000)}">`;
     const input = route('site.test', '/', html(`${filler}<link rel="canonical" href="/main">`));
 
     expect(await checkUrl(input, local)).toMatchObject({ verdict: 'ok', canonicalUrl: null, note: '' });
@@ -761,6 +773,28 @@ describe('checkUrl: canonical', () => {
     const input = route('site.test', '/', html('<link rel="canonical" href="http://site.test:8080/main">'));
 
     expect(await checkUrl(input, local)).toMatchObject({ verdict: 'ok', pingUrl: input });
+    expect(requestsSent).toBe(1);
+  });
+
+  test('a canonical longer than 2,048 characters is not used', async () => {
+    const long = `/main?q=${'a'.repeat(2048)}`;
+    route('site.test', long, html(''));
+    const input = route('site.test', '/', html(`<link rel="canonical" href="${long}">`));
+
+    expect(await checkUrl(input, local)).toMatchObject({ verdict: 'ok', pingUrl: input, canonicalUrl: null });
+    expect(requestsSent).toBe(1);
+  });
+
+  test('a redirect target longer than 2,048 characters is not followed', async () => {
+    const long = `/next?q=${'a'.repeat(2048)}`;
+    route('site.test', long, html(''));
+    const input = route('site.test', '/', redirect(301, long));
+
+    expect(await checkUrl(input, local)).toMatchObject({
+      verdict: 'unverified',
+      pingUrl: input,
+      note: 'Could not check the page (unsupported redirect) — pinged as typed'
+    });
     expect(requestsSent).toBe(1);
   });
 
@@ -982,10 +1016,10 @@ describe('checkUrl: with the real isPublicAddress', () => {
 describe('urlcheck.ts source', () => {
   const source = readFileSync('netlify/functions/lib/urlcheck.ts', 'utf8');
 
-  test('imports only node:dns, node:http, node:https, node:net and its own types', () => {
+  test('imports only node:dns, node:http, node:https and node:net', () => {
     const imported = Array.from(source.matchAll(/^import\s[^;]*?from\s+'([^']+)';/gm), match => match[1]);
 
-    expect(imported.sort()).toEqual(['./types', 'node:dns', 'node:http', 'node:https', 'node:net']);
+    expect(imported.sort()).toEqual(['node:dns', 'node:http', 'node:https', 'node:net']);
     expect(source).not.toMatch(/\brequire\s*\(|\bimport\s*\(/);
   });
 

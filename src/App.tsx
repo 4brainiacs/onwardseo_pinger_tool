@@ -13,10 +13,22 @@ import { AppError } from './utils/errorHandler';
 import { logger } from './utils/logger';
 import { triggerHeightRecalc } from './utils/iframeHeight';
 import { PING_SERVICES } from './services/pingServices';
-import type { PingResults, ProgressInfo } from './types';
+import { checkAddresses } from './utils/addressCheck';
+import type { ApiUrlCheck, PingResults, ProgressInfo } from './types';
 
 // Initialize with all services selected by default
 const ALL_SERVICE_NAMES = PING_SERVICES.map(s => s.name);
+
+const COULD_NOT_CHECK_NOTICE = 'Could not check the addresses — pinged as typed';
+
+/**
+ * The message for addresses that must not be pinged, for example
+ * "Fix before pinging: https://example.com/x — page not found (HTTP 404)".
+ */
+function fixBeforePinging(notPingable: ApiUrlCheck[]): string {
+  const reasons = notPingable.map(check => `${check.input} — ${check.note.replace(/^Not pinged: /, '')}`);
+  return `Fix before pinging: ${reasons.join('; ')}`;
+}
 
 function App() {
   const [selectedServices, setSelectedServices] = useState<Set<string>>(
@@ -35,6 +47,11 @@ function App() {
     successes: 0
   });
   const [activeUrls, setActiveUrls] = useState<string[]>([]);
+  // The address check that runs before pinging
+  const [isChecking, setIsChecking] = useState(false);
+  const [checkError, setCheckError] = useState('');
+  const [checkNotice, setCheckNotice] = useState('');
+  const [checks, setChecks] = useState<Record<string, ApiUrlCheck>>({});
   const pingControllerRef = useRef<PingController | null>(null);
 
   // Use shared error context for consistent error state across components
@@ -67,9 +84,59 @@ function App() {
     }
   });
 
-  const handleSubmit = async (urls: string[]) => {
+  /**
+   * Checks the addresses before anything is pinged.
+   * Returns the addresses to ping, or null when one of them must be fixed first.
+   */
+  const checkBeforePinging = async (typedUrls: string[]): Promise<string[] | null> => {
+    setCheckError('');
+    setCheckNotice('');
+    setChecks({});
+
+    setIsChecking(true);
+    let found: ApiUrlCheck[] | null;
     try {
-      clearError();
+      found = await checkAddresses(typedUrls);
+    } finally {
+      setIsChecking(false);
+    }
+
+    // The check itself could not be done: ping as typed, and say so
+    if (found === null) {
+      setCheckNotice(COULD_NOT_CHECK_NOTICE);
+      return typedUrls;
+    }
+
+    // An address that does not exist or must not be pinged: nothing is pinged
+    const notPingable = found.filter(check => check.pingUrl === null);
+    if (notPingable.length > 0) {
+      setCheckError(fixBeforePinging(notPingable));
+      return null;
+    }
+
+    // Ping the address each check ended with, each one once
+    const byPingUrl: Record<string, ApiUrlCheck> = {};
+    for (const check of found) {
+      if (check.pingUrl !== null && !(check.pingUrl in byPingUrl)) {
+        byPingUrl[check.pingUrl] = check;
+      }
+    }
+    setChecks(byPingUrl);
+    return Object.keys(byPingUrl);
+  };
+
+  const handleSubmit = async (typedUrls: string[]) => {
+    clearError();
+    setResults({});
+
+    const urls = await checkBeforePinging(typedUrls);
+    if (urls === null) {
+      // Nothing started; the message under the box may change the page height
+      triggerHeightRecalc();
+      return;
+    }
+
+    try {
       setIsLoading(true);
       setIsCompleted(false);
       setIsPaused(false);
@@ -137,6 +204,9 @@ function App() {
       successes: 0
     });
     setActiveUrls([]);
+    setCheckError('');
+    setCheckNotice('');
+    setChecks({});
     if (pingControllerRef.current) {
       pingControllerRef.current.reset();
     }
@@ -214,6 +284,8 @@ function App() {
             onReset={handleReset}
             isLoading={isLoading}
             isCompleted={isCompleted}
+            checkError={checkError}
+            isChecking={isChecking}
           />
 
           {isLoading && (
@@ -231,7 +303,9 @@ function App() {
             </div>
           )}
 
-          <ResultsDisplay results={results} selectedServices={selectedServices} />
+          {checkNotice && <p className="text-xs text-gray-600">{checkNotice}</p>}
+
+          <ResultsDisplay results={results} selectedServices={selectedServices} checks={checks} />
         </div>
       </div>
     </main>

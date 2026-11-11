@@ -387,15 +387,13 @@ export async function pingService(
       logger.warn('Service not found in API response', { service: service.name });
       return {
         success: false,
-        message: `Service ${service.name} not found in response`,
-        check: apiResponse.checks?.[0]
+        message: `Service ${service.name} not found in response`
       };
     }
 
     return {
       success: serviceResult.success,
       message: serviceResult.message,
-      check: apiResponse.checks?.[0],
       error: serviceResult.error ? {
         code: 'SERVICE_ERROR',
         details: serviceResult.error,

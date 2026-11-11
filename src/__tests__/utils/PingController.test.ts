@@ -311,38 +311,6 @@ describe('PingController', () => {
     expect(events.filter(e => e.type === 'results')).toHaveLength(1);
   });
 
-  test('the address check of a URL is stored on each of its results, successful or not', async () => {
-    const checkFor = (url: string) => ({
-      input: url,
-      pingUrl: `${url}/`,
-      finalUrl: `${url}/`,
-      canonicalUrl: null,
-      status: 200,
-      verdict: 'redirected',
-      note: `Corrected from ${url}: it redirects to ${url}/ — that address was pinged`
-    });
-    const calls = installFetch(url => {
-      const answer = okAnswer(url, url === URL_B ? ['Twingly'] : []);
-      return { ...answer, body: { ...(answer.body as Record<string, unknown>), checks: [checkFor(url)] } };
-    });
-    const { controller, events } = await createController();
-
-    const run = controller.start([URL_A, URL_B]);
-    await vi.runAllTimersAsync();
-    await run;
-
-    const results = events.filter(e => e.type === 'results');
-    const last = results[results.length - 1];
-    if (!last || last.type !== 'results') {
-      throw new Error('no results event recorded');
-    }
-    expect(last.results[URL_A].map(r => r.check)).toEqual([checkFor(URL_A), checkFor(URL_A), checkFor(URL_A)]);
-    expect(last.results[URL_B].map(r => r.status)).toEqual(['success', 'success', 'error']);
-    expect(last.results[URL_B].map(r => r.check)).toEqual([checkFor(URL_B), checkFor(URL_B), checkFor(URL_B)]);
-    // Still one request per URL
-    expect(calls.map(c => c.url)).toEqual([URL_A, URL_B]);
-  });
-
   test('onResults/onProgress values follow the v1.3.0 sequence', async () => {
     const failing: Record<string, string[]> = { [URL_B]: ['Twingly'] };
     installFetch(url => okAnswer(url, failing[url] || []));

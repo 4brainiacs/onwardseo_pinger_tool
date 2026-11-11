@@ -1,14 +1,16 @@
 import React from 'react';
 import { CheckCircle, XCircle } from 'lucide-react';
 import { PING_SERVICES } from '../services/pingServices';
-import type { PingResults } from '../types';
+import type { ApiUrlCheck, PingResults } from '../types';
 
 interface ResultsDisplayProps {
   results: PingResults;
   selectedServices: Set<string>;
+  /** The address check of each pinged URL, keyed by that URL */
+  checks?: Record<string, ApiUrlCheck>;
 }
 
-export function ResultsDisplay({ results, selectedServices }: ResultsDisplayProps) {
+export function ResultsDisplay({ results, selectedServices, checks }: ResultsDisplayProps) {
   const hasResults = Object.keys(results).length > 0;
 
   if (!hasResults) return null;
@@ -31,23 +33,18 @@ export function ResultsDisplay({ results, selectedServices }: ResultsDisplayProp
 
           if (!hasStarted) return null;
 
-          // The address check that ran before the pings: show the corrected
-          // address, and say why it was corrected or not pinged
-          const check = pingResults.find(r => r.check)?.check;
-          const isCorrected = check?.verdict === 'redirected' || check?.verdict === 'canonical';
-          const heading = isCorrected && check?.pingUrl ? check.pingUrl : url;
-          const isNotPinged = check?.verdict === 'not_found' || check?.verdict === 'unreachable' || check?.verdict === 'blocked';
+          // What the address check found: why this address was corrected, or
+          // that it could not be checked. The heading already is the pinged address.
+          const check = checks?.[url];
 
           return (
             <div key={url} className="bg-white rounded-lg border border-gray-200 p-2.5 shadow-sm">
               <h3 className="text-sm font-medium text-gray-700 break-all mb-2.5">
-                {heading}
+                {url}
               </h3>
 
               {check && check.verdict !== 'ok' && (
-                <p className={`text-xs break-all -mt-1.5 mb-2 ${isNotPinged ? 'text-red-700' : 'text-gray-600'}`}>
-                  {check.note}
-                </p>
+                <p className="text-xs break-all -mt-1.5 mb-2 text-gray-600">{check.note}</p>
               )}
 
               <div className="mb-3">
