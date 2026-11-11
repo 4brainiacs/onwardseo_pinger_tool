@@ -85,6 +85,22 @@ export function validateUrl(url: string): URLValidationResult {
   return { isValid: false, errors };
 }
 
+/**
+ * The address to ping: what the visitor typed, completed with https:// when no
+ * scheme was typed ("www.example.com" becomes "https://www.example.com").
+ * The ping API accepts only addresses that start with http:// or https://.
+ */
+export function toPingUrl(url: string): string {
+  const trimmedUrl = url.trim();
+  if (/^[a-z]+:\/\//i.test(trimmedUrl)) {
+    return trimmedUrl;
+  }
+  if (trimmedUrl.startsWith('//')) {
+    return `https:${trimmedUrl}`;
+  }
+  return `https://${trimmedUrl}`;
+}
+
 export function normalizeUrl(url: string): string {
   try {
     let normalizedUrl = url.trim().toLowerCase();

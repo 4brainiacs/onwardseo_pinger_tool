@@ -7,3 +7,6 @@
 - The ping mechanics (`src/utils/PingController.ts`, `src/utils/pingChecker.ts`, `netlify/functions/`, including `netlify/functions/lib/types.ts`) change only with a dedicated review.
 - AI agent files: `public/llms.txt` is served at `/llms.txt`; `/.well-known/ard.json` and `/.well-known/ai-catalog.json` answer 404 through `public/_redirects` (no ARD manifest, because the tool publishes no agentic resources).
 - Releases: pushing a `v*` tag runs `.github/workflows/release.yml`, which builds and publishes the GitHub Release (notes: `CHANGELOG.md`; assets: the files directly in `dist/`).
+
+## Address check
+- When you press Start Pinging, the page first calls `/api/check`, which opens each address from the server (GET, up to 5 redirects, the canonical address on the same site, 8 s, private networks blocked at connection time) and returns the address the site really uses (at most 30 checks per minute per IP address); `/api/ping` is unchanged. See `netlify/functions/lib/urlcheck.ts` and `netlify/functions/check.mts`.

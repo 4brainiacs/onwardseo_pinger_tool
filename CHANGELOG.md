@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.5.0] - 2026-11-11
+
+### Added
+- Each address is checked when you press Start Pinging, before anything is pinged, and corrected to the address the site really uses. The check follows up to 5 redirects: a permanent redirect (301 or 308), or a temporary one whose destination names itself as the main address, corrects the address; it also reads the page's canonical address (same site only, and only if that address answers without a redirect). An address whose domain does not exist, whose page answers 404 or 410, or that leads to a private network is listed in red under the box, and nothing is pinged until it is fixed or removed. When a page cannot be checked (for example HTTP 403 from bot protection, a timeout or a non-standard port), it is pinged as typed and the result says so.
+- `/api/check` accepts at most 30 checks per minute from one IP address; above that it answers HTTP 429, and the page pings the addresses as typed and says so.
+
+### Fixed
+- Addresses typed without `http://` or `https://` (for example `www.example.com`) are pinged as `https://www.example.com`. Before, the ping API rejected them ("Invalid URL format") and every service showed "error". The form had accepted such addresses since the real ping API was added (December 2025).
+- An address typed twice in one run is pinged once.
+
+### Unchanged
+- The ping services, their timeouts and retries, the order and pace of the pings, and the ping API (`/api/ping`).
+
 ## [1.4.1] - 2026-11-10
 
 ### Agent discoverability
