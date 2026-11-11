@@ -5,13 +5,6 @@ export enum ErrorSeverity {
   CRITICAL = 'critical'
 }
 
-export interface ErrorContext {
-  severity?: ErrorSeverity;
-  retryable?: boolean;
-  context?: Record<string, unknown>;
-  originalError?: unknown;
-}
-
 export class AppError extends Error {
   public readonly severity: ErrorSeverity;
   public readonly timestamp: number;

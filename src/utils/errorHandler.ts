@@ -68,11 +68,4 @@ export function logError(
   }
 }
 
-export function isRetryableError(error: unknown): boolean {
-  if (error instanceof AppError) {
-    return error.retryable && error.severity !== ErrorSeverity.CRITICAL;
-  }
-  return false;
-}
-
 export { AppError, ErrorSeverity };
