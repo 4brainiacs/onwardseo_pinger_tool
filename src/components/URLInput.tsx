@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Send, AlertCircle, RotateCcw } from 'lucide-react';
-import { validateUrl } from '../utils/urlUtils';
+import { validateUrl, toPingUrl } from '../utils/urlUtils';
 
 /**
  * Splits the textarea text into URLs and checks them.
@@ -25,7 +25,11 @@ function checkUrls(text: string): { urls: string[] | null; error: string } {
     };
   }
 
-  return { urls, error: '' };
+  // The ping API accepts only full http:// or https:// addresses: complete
+  // "www.example.com" to "https://www.example.com", then drop repeats.
+  const pingUrls = Array.from(new Set(urls.map(toPingUrl)));
+
+  return { urls: pingUrls, error: '' };
 }
 
 interface URLInputProps {

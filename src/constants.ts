@@ -1,4 +1,4 @@
-export const APP_VERSION = '1.4.1';
+export const APP_VERSION = '1.5.0';
 
 export const ERROR_MESSAGES = {
   NETWORK: 'Network error occurred. Please check your connection and try again.',

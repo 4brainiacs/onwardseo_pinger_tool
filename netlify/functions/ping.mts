@@ -14,10 +14,11 @@
  */
 
 import type { Context, Config } from '@netlify/functions';
-import type { PingRequest, PingResponse, PingResult } from './lib/types';
+import type { PingRequest, PingResponse, PingResult, UrlCheck } from './lib/types';
 import { XMLRPC_SERVICES, WEBSUB_HUB, MAX_URLS, MAX_BODY_SIZE, URL_PATTERN, BATCH_SIZE, MAX_FUNCTION_EXECUTION_MS, isUrlSafe } from './lib/types';
 import { sendXmlRpcPing } from './lib/xmlrpc';
 import { notifyGoogleHub } from './lib/websub';
+import { checkUrl } from './lib/urlcheck';
 
 /**
  * Validates the request body
@@ -194,6 +195,26 @@ async function pingAllServices(
 }
 
 /**
+ * The results for an address that is not pinged (page not found, domain does
+ * not exist, private network): one per service, carrying the check's note.
+ */
+function notPingedResults(check: UrlCheck): PingResult[] {
+  const services: Array<Pick<PingResult, 'service' | 'method'>> = [
+    { service: WEBSUB_HUB.name, method: 'websub' },
+    ...XMLRPC_SERVICES.map(service => ({ service: service.name, method: 'xmlrpc' as const }))
+  ];
+
+  return services.map(({ service, method }) => ({
+    service,
+    success: false,
+    message: check.note,
+    method,
+    responseTime: 0,
+    error: 'not_pinged'
+  }));
+}
+
+/**
  * Main handler for the ping endpoint
  */
 export default async (req: Request, context: Context): Promise<Response> => {
@@ -265,7 +286,13 @@ export default async (req: Request, context: Context): Promise<Response> => {
       });
     }
 
-    const { urls } = validation;
+    // Check every received address before pinging (redirects, canonical, private
+    // networks). Only the address each check ends with is pinged; an address
+    // whose check ends without one (pingUrl null) is not pinged at all.
+    const checks = await Promise.all(validation.urls.map(url => checkUrl(url)));
+    const urls = Array.from(new Set(
+      checks.map(check => check.pingUrl).filter((url): url is string => url !== null)
+    ));
 
     // Build feed URL for WebSub
     // The feed endpoint is on the same origin
@@ -331,6 +358,14 @@ export default async (req: Request, context: Context): Promise<Response> => {
 
     allResults.push(...Array.from(serviceResults.values()));
 
+    // An address that was not pinged gets its own result per service, with the
+    // check's note (kept apart from the per-service summary of the pinged ones)
+    for (const check of checks) {
+      if (check.pingUrl === null) {
+        allResults.push(...notPingedResults(check));
+      }
+    }
+
     const totalTime = Date.now() - startTime;
 
     // Build response
@@ -338,7 +373,9 @@ export default async (req: Request, context: Context): Promise<Response> => {
       success: allResults.some(r => r.success),
       results: allResults,
       totalTime,
-      feedUrl
+      // The feed lists the pinged addresses; there is none when nothing was pinged
+      feedUrl: urls.length > 0 ? feedUrl : undefined,
+      checks
     };
 
     return new Response(JSON.stringify(response), {

@@ -44,6 +44,40 @@ describe('URLInput Component', () => {
     expect(mockOnSubmit).toHaveBeenCalledWith(['https://example.com']);
   });
 
+  test('completes addresses typed without a scheme with https://', async () => {
+    render(
+      <URLInput
+        onSubmit={mockOnSubmit}
+        onReset={mockOnReset}
+        isLoading={false}
+        isCompleted={false}
+      />
+    );
+
+    const input = screen.getByPlaceholderText(/Enter up to 5 URLs/i);
+    await userEvent.type(input, 'www.easyskip.uk{Enter}www.prostay.com');
+    fireEvent.click(screen.getByRole('button', { name: /Start Pinging/i }));
+
+    expect(mockOnSubmit).toHaveBeenCalledWith(['https://www.easyskip.uk', 'https://www.prostay.com']);
+  });
+
+  test('submits an address once when it is typed twice', async () => {
+    render(
+      <URLInput
+        onSubmit={mockOnSubmit}
+        onReset={mockOnReset}
+        isLoading={false}
+        isCompleted={false}
+      />
+    );
+
+    const input = screen.getByPlaceholderText(/Enter up to 5 URLs/i);
+    await userEvent.type(input, 'www.example.com{Enter}https://www.example.com');
+    fireEvent.click(screen.getByRole('button', { name: /Start Pinging/i }));
+
+    expect(mockOnSubmit).toHaveBeenCalledWith(['https://www.example.com']);
+  });
+
   test('shows error for invalid URLs', async () => {
     render(
       <URLInput

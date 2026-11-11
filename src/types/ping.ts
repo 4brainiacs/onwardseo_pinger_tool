@@ -20,11 +20,29 @@ export interface PingService {
 }
 
 /**
+ * Result of the address check the backend runs before pinging
+ * (same shape as UrlCheck in netlify/functions/lib/types.ts)
+ */
+export interface ApiUrlCheck {
+  /** The address as received */
+  input: string;
+  /** The address that was pinged, or null when nothing was pinged */
+  pingUrl: string | null;
+  finalUrl: string | null;
+  canonicalUrl: string | null;
+  status: number | null;
+  verdict: 'ok' | 'redirected' | 'canonical' | 'not_found' | 'unreachable' | 'blocked' | 'unverified';
+  /** What to tell the visitor; empty for 'ok' */
+  note: string;
+}
+
+/**
  * Response from a ping operation
  */
 export interface PingResponse {
   success: boolean;
   message: string;
+  check?: ApiUrlCheck;
   error?: {
     code: string;
     details: string;
@@ -41,6 +59,7 @@ export interface PingResult {
   status: 'pending' | 'success' | 'error';
   message?: string;
   timestamp: number;
+  check?: ApiUrlCheck;
   error?: {
     code: string;
     details: string;
@@ -80,6 +99,7 @@ export interface ApiPingResponse {
   results: ApiPingResult[];
   totalTime: number;
   feedUrl?: string;
+  checks?: ApiUrlCheck[];
   error?: string;
 }
 

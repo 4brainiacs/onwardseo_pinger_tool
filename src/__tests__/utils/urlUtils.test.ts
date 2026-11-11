@@ -1,7 +1,27 @@
 import { describe, test, expect } from 'vitest';
-import { validateUrl, normalizeUrl, extractDomain } from '../../utils/urlUtils';
+import { validateUrl, normalizeUrl, extractDomain, toPingUrl } from '../../utils/urlUtils';
 
 describe('URL Utilities', () => {
+  describe('toPingUrl', () => {
+    test.each([
+      ['www.easyskip.uk', 'https://www.easyskip.uk'],
+      ['www.prostay.com', 'https://www.prostay.com'],
+      ['example.com/blog/Post-1?a=B', 'https://example.com/blog/Post-1?a=B'],
+      ['//www.example.com/page', 'https://www.example.com/page'],
+      ['  example.com  ', 'https://example.com']
+    ])('completes %j to %j', (typed, expected) => {
+      expect(toPingUrl(typed)).toBe(expected);
+    });
+
+    test.each([
+      'https://www.example.com',
+      'http://example.com/path',
+      'HTTPS://Example.com/Path'
+    ])('leaves %j unchanged', typed => {
+      expect(toPingUrl(typed)).toBe(typed);
+    });
+  });
+
   describe('validateUrl', () => {
     test('validates correct URLs', () => {
       const validUrls = [

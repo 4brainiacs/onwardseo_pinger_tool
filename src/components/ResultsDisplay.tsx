@@ -31,11 +31,24 @@ export function ResultsDisplay({ results, selectedServices }: ResultsDisplayProp
 
           if (!hasStarted) return null;
 
+          // The address check that ran before the pings: show the corrected
+          // address, and say why it was corrected or not pinged
+          const check = pingResults.find(r => r.check)?.check;
+          const isCorrected = check?.verdict === 'redirected' || check?.verdict === 'canonical';
+          const heading = isCorrected && check?.pingUrl ? check.pingUrl : url;
+          const isNotPinged = check?.verdict === 'not_found' || check?.verdict === 'unreachable' || check?.verdict === 'blocked';
+
           return (
             <div key={url} className="bg-white rounded-lg border border-gray-200 p-2.5 shadow-sm">
               <h3 className="text-sm font-medium text-gray-700 break-all mb-2.5">
-                {url}
+                {heading}
               </h3>
+
+              {check && check.verdict !== 'ok' && (
+                <p className={`text-xs break-all -mt-1.5 mb-2 ${isNotPinged ? 'text-red-700' : 'text-gray-600'}`}>
+                  {check.note}
+                </p>
+              )}
 
               <div className="mb-3">
                 <div className="flex justify-between text-xs text-gray-500 mb-1">
