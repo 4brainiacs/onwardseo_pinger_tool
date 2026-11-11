@@ -11,7 +11,6 @@
  * Answer: { checks: UrlCheck[] }, in the order of the received URLs
  */
 
-import type { Config } from '@netlify/functions';
 import type { PingRequest } from './lib/types';
 import { MAX_URLS, MAX_BODY_SIZE, URL_PATTERN, isUrlSafe } from './lib/types';
 import { checkUrl } from './lib/urlcheck';
@@ -167,6 +166,14 @@ export default async (req: Request): Promise<Response> => {
   }
 };
 
-export const config: Config = {
-  path: '/api/check'
+// At most 30 requests per 60 seconds from one IP address; above that Netlify
+// answers 429 before this function runs. Not annotated with Config: the
+// installed @netlify/functions types do not know windowLimit yet.
+export const config = {
+  path: '/api/check',
+  rateLimit: {
+    windowLimit: 30,
+    windowSize: 60,
+    aggregateBy: ['ip', 'domain']
+  }
 };

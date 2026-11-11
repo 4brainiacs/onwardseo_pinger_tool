@@ -9,4 +9,4 @@
 - Releases: pushing a `v*` tag runs `.github/workflows/release.yml`, which builds and publishes the GitHub Release (notes: `CHANGELOG.md`; assets: the files directly in `dist/`).
 
 ## Address check
-- When you press Start Pinging, the page first calls `/api/check`, which opens each address from the server (GET, up to 5 redirects, the canonical address on the same site, 8 s, private networks blocked at connection time) and returns the address the site really uses; `/api/ping` is unchanged. See `netlify/functions/lib/urlcheck.ts` and `netlify/functions/check.mts`.
+- When you press Start Pinging, the page first calls `/api/check`, which opens each address from the server (GET, up to 5 redirects, the canonical address on the same site, 8 s, private networks blocked at connection time) and returns the address the site really uses (at most 30 checks per minute per IP address); `/api/ping` is unchanged. See `netlify/functions/lib/urlcheck.ts` and `netlify/functions/check.mts`.

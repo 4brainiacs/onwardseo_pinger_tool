@@ -96,7 +96,7 @@ export function URLInput({ onSubmit, onReset, isLoading, isCompleted, checkError
     onReset();
   };
 
-  const buttonClasses = "inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 min-h-[36px] transition-colors";
+  const buttonClasses = "inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 min-h-[36px] transition-colors shrink-0";
 
   return (
     <form onSubmit={handleSubmit} className="w-full max-w-4xl">
@@ -149,9 +149,9 @@ export function URLInput({ onSubmit, onReset, isLoading, isCompleted, checkError
             </button>
           )}
           {shownError && (
-            <div className="flex items-center gap-1 text-sm text-red-500">
-              <AlertCircle className="h-4 w-4" />
-              <span>{shownError}</span>
+            <div className="flex items-center gap-1 text-sm text-red-500 min-w-0">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span className="min-w-0 break-words">{shownError}</span>
             </div>
           )}
         </div>

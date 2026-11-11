@@ -117,6 +117,11 @@ describe('URLInput Component', () => {
     // Rendered exactly like the format error line
     expect(shown.parentElement).toHaveClass('flex', 'items-center', 'gap-1', 'text-sm', 'text-red-500');
     expect(shown.parentElement?.querySelector('svg')).not.toBeNull();
+    // On a phone the message wraps inside the frame; the icon and the button keep their size
+    expect(shown.parentElement).toHaveClass('min-w-0');
+    expect(shown).toHaveClass('min-w-0', 'break-words');
+    expect(shown.parentElement?.querySelector('svg')).toHaveClass('h-4', 'w-4', 'shrink-0');
+    expect(screen.getByRole('button', { name: /Start Pinging/i })).toHaveClass('shrink-0');
     // The button stays usable: the visitor fixes the text and submits again
     expect(screen.getByRole('button', { name: /Start Pinging/i })).toBeEnabled();
 

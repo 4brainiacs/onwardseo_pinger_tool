@@ -179,6 +179,7 @@ describe('isPublicAddress', () => {
     '::1',
     'fc00::1', 'fd12:3456:789a::1',  // fc00::/7
     'fe80::1', 'febf::1',            // fe80::/10
+    'fec0::1', 'feff::1',            // fec0::/10
     'ff02::1',                       // ff00::/8
     '2001:db8::1',                   // 2001:db8::/32
     '::ffff:127.0.0.1', '::ffff:7f00:1', '::ffff:10.0.0.1', // ::ffff:0:0/96 by its IPv4
@@ -635,20 +636,96 @@ describe('checkUrl: canonical', () => {
     });
   });
 
-  test('a canonical that redirects is pinged at its final address', async () => {
-    const final = route('site.test', '/new', html(''));
-    route('site.test', '/old', redirect(302, '/new'));
+  test('a canonical that redirects is not used, and its redirect target is never requested', async () => {
+    route('site.test', '/new', html(''));
     const input = route('site.test', '/page', html('<link rel="canonical" href="/old">'));
+
+    for (const status of [301, 302, 303, 307, 308]) {
+      route('site.test', '/old', redirect(status, '/new'));
+      seen.length = 0;
+
+      expect(await checkUrl(input, local)).toEqual({
+        input,
+        pingUrl: input,
+        finalUrl: input,
+        canonicalUrl: 'http://site.test/old',
+        status: 200,
+        verdict: 'ok',
+        note: ''
+      });
+      expect(seen.map(request => request.key)).toEqual(['site.test/page', 'site.test/old']);
+      expect(requestsTo('site.test', '/new')).toBe(0);
+    }
+  });
+
+  test('a canonical that redirects back to the final address is not used: ok, without a note', async () => {
+    route('site.test', '/alias', redirect(301, '/page'));
+    const input = route('site.test', '/page', html('<link rel="canonical" href="/alias">'));
 
     expect(await checkUrl(input, local)).toEqual({
       input,
-      pingUrl: final,
+      pingUrl: input,
       finalUrl: input,
-      canonicalUrl: 'http://site.test/old',
+      canonicalUrl: 'http://site.test/alias',
       status: 200,
-      verdict: 'canonical',
-      note: `Corrected from ${input}: the page names ${final} as its main address — that address was pinged`
+      verdict: 'ok',
+      note: ''
     });
+    expect(seen.map(request => request.key)).toEqual(['site.test/page', 'site.test/alias']);
+  });
+
+  test('a canonical that redirects is not used after a permanent redirect either: the redirect row applies', async () => {
+    route('site.test', '/alias', redirect(302, '/elsewhere'));
+    const final = route('site.test', '/page', html('<link rel="canonical" href="/alias">'));
+    const input = route('www.site.test', '/page', redirect(301, final));
+
+    expect(await checkUrl(input, local)).toMatchObject({
+      verdict: 'redirected',
+      pingUrl: final,
+      canonicalUrl: 'http://site.test/alias',
+      note: `Corrected from ${input}: it redirects to ${final} — that address was pinged`
+    });
+    expect(requestsTo('site.test', '/elsewhere')).toBe(0);
+  });
+
+  test('a canonical whose domain does not exist is not used', async () => {
+    const input = route('site.test', '/page', html('<link rel="canonical" href="http://www.site.test/page">'));
+    const withoutWww: LookupAll = (hostname, options, callback) => {
+      if (hostname === 'www.site.test') {
+        callback(lookupFailure('ENOTFOUND'), []);
+        return;
+      }
+      testLookup(hostname, options, callback);
+    };
+
+    expect(await checkUrl(input, { ...local, lookup: withoutWww })).toMatchObject({
+      verdict: 'ok',
+      pingUrl: input,
+      canonicalUrl: 'http://www.site.test/page',
+      note: ''
+    });
+    expect(seen.map(request => request.key)).toEqual(['site.test/page']);
+  });
+
+  test('only the status of the canonical is read: its page is not awaited', async () => {
+    const canonical = route('site.test', '/main', (_req, res) => {
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.write('<html><head>');
+      // the page never ends
+    });
+    const input = route('site.test', '/page', html('<link rel="canonical" href="/main">'));
+
+    const startedAt = Date.now();
+    expect(await checkUrl(input, local)).toMatchObject({ verdict: 'canonical', pingUrl: canonical });
+    expect(Date.now() - startedAt).toBeLessThan(4000);
+  });
+
+  test.each([404, 410, 500, 503])('a canonical that answers %i is not used', async status => {
+    route('site.test', '/gone', answer(status));
+    const input = route('site.test', '/page', html('<link rel="canonical" href="/gone">'));
+
+    expect(await checkUrl(input, local)).toMatchObject({ verdict: 'ok', pingUrl: input, note: '' });
+    expect(requestsSent).toBe(2);
   });
 
   test('the canonical page itself is not read for a further canonical', async () => {
@@ -816,11 +893,18 @@ describe('checkUrl: canonical', () => {
     expect(seen.map(request => request.key)).toEqual(['www.split.test/']);
   });
 
-  test('a canonical that redirects to a private address is blocked', async () => {
+  test('a canonical that redirects to a private address is not used, and that address is never requested', async () => {
     route('site.test', '/main', redirect(301, 'http://10.0.0.1/'));
+    route('site.test', '/named', redirect(301, 'http://internal.test/'));
     const input = route('site.test', '/', html('<link rel="canonical" href="/main">'));
+    const second = route('site.test', '/second', html('<link rel="canonical" href="/named">'));
 
-    expect(await checkUrl(input, local)).toMatchObject({ verdict: 'blocked', pingUrl: null });
+    expect(await checkUrl(input, local)).toMatchObject({ verdict: 'ok', pingUrl: input, note: '' });
+    expect(await checkUrl(second, local)).toMatchObject({ verdict: 'ok', pingUrl: second, note: '' });
+    expect(seen.map(request => request.key)).toEqual([
+      'site.test/', 'site.test/main', 'site.test/second', 'site.test/named'
+    ]);
+    expect(lookedUp).not.toContain('internal.test');
   });
 
   test('when the time budget ends during the canonical check, the canonical is ignored', async () => {

@@ -303,7 +303,7 @@ function App() {
             </div>
           )}
 
-          {checkNotice && <p className="text-xs text-gray-600">{checkNotice}</p>}
+          {checkNotice && <p className="w-full max-w-4xl text-xs text-gray-600">{checkNotice}</p>}
 
           <ResultsDisplay results={results} selectedServices={selectedServices} checks={checks} />
         </div>

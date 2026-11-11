@@ -42,8 +42,15 @@ beforeEach(() => {
 });
 
 describe('/api/check', () => {
-  test('is served at /api/check', () => {
-    expect(config).toEqual({ path: '/api/check' });
+  test('is served at /api/check, at most 30 requests per 60 seconds from one IP address', () => {
+    expect(config).toEqual({
+      path: '/api/check',
+      rateLimit: {
+        windowLimit: 30,
+        windowSize: 60,
+        aggregateBy: ['ip', 'domain']
+      }
+    });
   });
 
   test('invalid JSON is rejected with 400, as /api/ping does', async () => {

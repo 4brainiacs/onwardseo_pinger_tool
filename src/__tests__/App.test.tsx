@@ -123,7 +123,7 @@ describe('App: the address check before pinging', () => {
     });
     const notice = await screen.findByText('Could not check the addresses — pinged as typed');
     expect(notice.tagName).toBe('P');
-    expect(notice.className).toBe('text-xs text-gray-600');
+    expect(notice.className).toBe('w-full max-w-4xl text-xs text-gray-600');
     // Directly above "Ping Results"
     expect(notice.nextElementSibling).toContainElement(screen.getByText('Ping Results'));
     expect(screen.queryByText(/Fix before pinging/)).not.toBeInTheDocument();

@@ -65,7 +65,7 @@ describe('checkAddresses', () => {
     expect(warned).toHaveBeenCalledTimes(1);
   });
 
-  test.each([400, 404, 413, 502])('%i returns null', async status => {
+  test.each([400, 404, 413, 429, 502])('%i returns null', async status => {
     installFetch(async () => ({ status, json: async () => ({}) }));
 
     expect(await checkAddresses(URLS)).toBeNull();

@@ -164,6 +164,7 @@ function isPublicIPv6(groups: number[]): boolean {
   if (groups[0] === 0x64 && groups[1] === 0xff9b && groups[2] === 1) return false; // 64:ff9b:1::/48 (local NAT64)
   if ((groups[0] & 0xfe00) === 0xfc00) return false;              // fc00::/7
   if ((groups[0] & 0xffc0) === 0xfe80) return false;              // fe80::/10
+  if ((groups[0] & 0xffc0) === 0xfec0) return false;              // fec0::/10 (site-local, deprecated)
   if ((groups[0] & 0xff00) === 0xff00) return false;              // ff00::/8
   if (groups[0] === 0x2001 && groups[1] === 0x0db8) return false; // 2001:db8::/32
   return true;
@@ -370,9 +371,32 @@ function classifyFailure(error: unknown, ctx: CheckContext): Chain {
 }
 
 /**
- * Follows up to 5 redirects from an address. Every hop passes the guards.
+ * The canonical's own check: one GET with the same guards, headers only.
+ * It follows no redirect: the canonical counts only when this one answer is 2xx.
  */
-async function followChain(start: URL, ctx: CheckContext, readHead: boolean): Promise<Chain> {
+async function checkCanonical(canonical: URL, ctx: CheckContext): Promise<'answers' | 'blocked' | 'not used'> {
+  const refusal = refuse(canonical, ctx);
+  if (refusal) {
+    return refusal.kind === 'blocked' ? 'blocked' : 'not used';
+  }
+
+  try {
+    const { status } = await fetchOnce(canonical, ctx, false);
+    return isSuccess(status) ? 'answers' : 'not used';
+  } catch (error) {
+    // A host that is not public becomes the verdict the visitor sees. Any other
+    // failure (timeout, connection failure, domain not found) is deliberately
+    // not reported: the canonical is optional, and the check goes on without it.
+    // This file logs nothing.
+    return classifyFailure(error, ctx).kind === 'blocked' ? 'blocked' : 'not used';
+  }
+}
+
+/**
+ * Follows up to 5 redirects from the typed address and reads the start of the
+ * page they end on. Every hop passes the guards.
+ */
+async function followChain(start: URL, ctx: CheckContext): Promise<Chain> {
   const visited = new Set<string>();
   const redirects: number[] = [];
   let current = start;
@@ -386,7 +410,7 @@ async function followChain(start: URL, ctx: CheckContext, readHead: boolean): Pr
 
     let fetched: Fetched;
     try {
-      fetched = await fetchOnce(current, ctx, readHead);
+      fetched = await fetchOnce(current, ctx, true);
     } catch (error) {
       // Not swallowed: the failure becomes the verdict the visitor sees
       return classifyFailure(error, ctx);
@@ -490,7 +514,7 @@ async function runCheck(input: string, ctx: CheckContext): Promise<UrlCheck> {
   // A fragment (#...) is never sent to the site and is not part of its address
   start.hash = '';
 
-  const chain = await followChain(start, ctx, true);
+  const chain = await followChain(start, ctx);
 
   if (chain.kind === 'blocked') {
     return { ...nothing, pingUrl: null, verdict: 'blocked', note: NOTE_PRIVATE_NETWORK };
@@ -524,19 +548,17 @@ async function runCheck(input: string, ctx: CheckContext): Promise<UrlCheck> {
   const found = { input, finalUrl: final, canonicalUrl, status };
 
   if (canonical && !namesItself && mayBeUsed(canonical, chain.url)) {
-    // The canonical's own check: same guards, headers only, no further canonical
-    const own = await followChain(canonical, ctx, false);
-    if (own.kind === 'blocked') {
+    const own = await checkCanonical(canonical, ctx);
+    if (own === 'blocked') {
       return { ...found, pingUrl: null, verdict: 'blocked', note: NOTE_PRIVATE_NETWORK };
     }
-    if (own.kind === 'response' && isSuccess(own.status)) {
-      const pinged = own.url.href;
+    if (own === 'answers') {
       return {
-        ...found, pingUrl: pinged, verdict: 'canonical',
-        note: `Corrected from ${input}: the page names ${pinged} as its main address — that address was pinged`
+        ...found, pingUrl: canonical.href, verdict: 'canonical',
+        note: `Corrected from ${input}: the page names ${canonical.href} as its main address — that address was pinged`
       };
     }
-    // The canonical does not answer (or the time budget ended): go on without it
+    // The canonical redirects, does not answer 2xx, or the time budget ended: go on without it
   }
 
   if (redirects.length === 0) {
@@ -560,7 +582,7 @@ async function runCheck(input: string, ctx: CheckContext): Promise<UrlCheck> {
 /**
  * Checks one address before it is pinged.
  *
- * The whole check (all redirects and the canonical's own check) has one time
+ * The whole check (all redirects and the canonical's one request) has one time
  * budget of 8 seconds.
  */
 export async function checkUrl(input: string, options: CheckUrlOptions = {}): Promise<UrlCheck> {
